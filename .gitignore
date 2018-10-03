@@ -1,3 +1,11 @@
+## MATLAB auxillary files
+*.asv
+*.mat
+*.fig
+*.eps
+diary
+
+
 ## Core latex/pdflatex auxiliary files:
 *.aux
 *.lof
