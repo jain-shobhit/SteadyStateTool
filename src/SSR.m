@@ -15,9 +15,9 @@ classdef SSR < handle
         Df              % function handle for derivative of the forcing w.r.t time period T
         order = 1       % order if integration: Newton Cotes is used (existing steps are refined)
         n_steps = 50    % number of intervals in the time domain: 50 by default
-        %     end
-        %
-        %     properties (Access = private)
+%     end
+%     
+%     properties (Access = private)
         alpha           % constants defined in (27)
         omega           % constants defined in (27)
         beta            % constants defined in (27)
@@ -29,12 +29,12 @@ classdef SSR < handle
         n               % number of dofs
         t               % time vector 0:dt:T
         dt              % length of each time interval (T/nt)
-        L               % Green's function for displacements (calculated over -T:dt:T)
-        DL              % Derivative dLdT
-        J               % Green's function for velocities (calculated over -T:dt:T)
+        Lvec            % Green's function for displacements (calculated over -T:dt:T)
+        DLvec           % Derivative dLdT
+        Jvec               % Green's function for velocities (calculated over -T:dt:T)
         ConvMtx         % convolution matrix for displacements
         isupdated       % check if different quantitities are updated according to T
-        W               % Weights vector for higher order integration
+        weights         % Weights vector for higher order integration
         nt              % number of nodes in the time mesh
     end
     
@@ -62,8 +62,7 @@ classdef SSR < handle
         
         function set.T(O,T)
             if isempty(O.T) || O.T ~= T
-                O.T = T;
-                not_updated(O);
+                O.T = T;                
                 update_t(O);
             end
         end
@@ -84,7 +83,14 @@ classdef SSR < handle
         end
         
         function set.order(O,order)
-            O.order = order;
+            if O.order ~= order
+                O.order = order;
+                update_t(O);
+            end
+        end
+        
+        function set.n_steps(O,n_steps)
+            O.n_steps = n_steps;
             update_t(O);
         end
         
@@ -92,12 +98,27 @@ classdef SSR < handle
             O.nt = O.n_steps*O.order; % first set n_steps
             w = SSR.NewtonCotes(O.order);
             w0 = [w(2:end-1) 2*w(end)];
-            O.W = O.order*[w(1) repmat(w0,1,O.n_steps-1) w(2:end)];
+            O.weights = O.order*[w(1) repmat(w0,1,O.n_steps-1) w(2:end)];
             O.dt = O.T/O.nt;
             O.t = 0:O.dt:O.T;
+            not_updated(O);
         end
         
-        function L = greens_function(O,t,T)
+        function Lvec = get.Lvec(O)
+            if O.isupdated.L
+                Lvec = O.Lvec;
+            else
+                update_Lvec(O);
+                Lvec = O.Lvec;
+            end
+        end
+        
+        function update_Lvec(O)
+            O.Lvec = L(O,O.t,O.T);
+            O.isupdated.L = true;            
+        end
+        
+        function L = L(O,t,T)
             % t must be a row vector
             L = zeros(O.n,length(t));
             % underdamped
@@ -119,9 +140,8 @@ classdef SSR < handle
                 exp_alpha_t_T = exp(O.alpha(O.c) * (t + T));
                 one_min_exp_alpha_T = 1 - repmat(exp(O.alpha(O.c) * T),size(t));
                 hc = repmat(SSR.h(t),size(O.omega(O.c)));
-                L(O.c,:) = exp_alpha_t_T.*(one_min_exp_alpha_T.*t_c +...
+                L(O.c,:) = exp_alpha_t_T.*(one_min_exp_alpha_T.*t_c + ...
                     T)./(one_min_exp_alpha_T.^2) + hc.*exp_alpha_t.*t_c;
-                
             end
             
             % overdamped
@@ -141,7 +161,21 @@ classdef SSR < handle
             end
         end
         
-        function J = greens_function_vel(O,t,T)
+        function Jvec = get.Jvec(O)
+            if O.isupdated.J
+                Jvec = O.Jvec;
+            else
+                update_Jvec(O);
+                Jvec = O.Jvec;
+            end
+        end
+        
+        function update_Jvec(O)
+            O.Jvec = J(O,O.t,O.T);
+            O.isupdated.J = true;            
+        end
+        
+        function J = J(O,t,T)
             % t must be a row vector
             J = zeros(O.n,length(t));
             % underdamped
@@ -164,14 +198,14 @@ classdef SSR < handle
             % critically damped
             if ~isempty(O.c)
                 t_c = repmat(t,size(O.c));
-                al = repmat(O.alpha(O.c), size(t));                
+                al = repmat(O.alpha(O.c), size(t));
                 exp_alpha_t = exp(O.alpha(O.c) * t);
                 exp_alpha_t_T = exp(O.alpha(O.c) * (t + T));
                 one_min_exp_alpha_T = 1 - repmat(exp(O.alpha(O.c) * T),size(t));
                 hc = repmat(SSR.h(t),size(O.omega(O.c)));
                 J(O.c,:) = exp_alpha_t_T.*(one_min_exp_alpha_T.*(1 + al.*t_c) +...
                     al.*T)./(one_min_exp_alpha_T.^2) + hc.*exp_alpha_t.*(1 + ...
-                    al.*t_c) ;                
+                    al.*t_c) ;
             end
             
             % overdamped
