@@ -44,6 +44,7 @@ classdef SSR < handle
             O.M = M;
             O.C = C;
             O.K = K;
+            O.n = length(M);
             
             [V, ~] = eig(full(K),full(M));
             mu = diag(V.' * M * V);
@@ -114,7 +115,8 @@ classdef SSR < handle
         end
         
         function update_Lvec(O)
-            O.Lvec = L(O,O.t,O.T);
+            ell = L(O,O.t,O.T);
+            O.Lvec = [ell(:,1:end-1), ell]; % padding Green's function to ensure correct convolution
             O.isupdated.L = true;            
         end
         
@@ -171,7 +173,8 @@ classdef SSR < handle
         end
         
         function update_Jvec(O)
-            O.Jvec = J(O,O.t,O.T);
+            jay = J(O,O.t,O.T);
+            O.Jvec = [jay(:,1:end-1), jay]; % padding Green's function to ensure correct convolution
             O.isupdated.J = true;            
         end
         
@@ -226,6 +229,24 @@ classdef SSR < handle
                     ho.*(bet.*exp_beta_t - gam.*exp_gamma_t) )./ beta_min_gamma;
             end
         end
+        
+        function [x,xd] = LinearResponse(O)
+            % Compute modal forcing
+            phi = zeros(O.n,O.nt+1);
+            for j = 1:O.nt+1
+                phi(:,j) = O.U.'* O.f(O.t(j),O.T);
+            end
+            % Compute modal response by convolution with Green's function
+            eta = zeros(size(phi));
+            etad = zeros(size(phi));
+            for j = 1:O.n 
+                eta(j,:) = O.dt*conv(O.weights.* phi(j,:),O.Lvec(j,:),'same');                
+                etad(j,:) = O.dt*conv(O.weights.* phi(j,:),O.Jvec(j,:),'same');
+            end
+            x = O.U*eta;
+            xd = O.U*etad;
+        end
+            
     end
     
     methods(Static)
