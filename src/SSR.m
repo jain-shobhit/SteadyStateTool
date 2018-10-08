@@ -36,6 +36,7 @@ classdef SSR < handle
         isupdated       % check if different quantitities are updated according to T
         weights         % Weights vector for higher order integration
         nt              % number of nodes in the time mesh
+        Ft              % forcing evaluated over time mesh
     end
     
     methods
@@ -80,6 +81,7 @@ classdef SSR < handle
             update.J = false;
             update.CML = false;
             update.DL = false;
+            update.Ft = false;
             O.isupdated = update;
         end
         
@@ -114,6 +116,18 @@ classdef SSR < handle
             end
         end
         
+        function Ft = get.Ft(O)
+            if O.isupdated.Ft
+                Ft = O.Ft;
+            else
+                update_Ft(O);
+                Ft = O.Ft;
+            end
+        end
+        
+        function update_Ft(O)
+            O.Ft = O.f(O.t,O.T);
+        end
         function update_Lvec(O)
             ell = L(O,O.t,O.T);
             O.Lvec = [ell(:,1:end-1), ell]; % padding Green's function to ensure correct convolution
@@ -246,13 +260,31 @@ classdef SSR < handle
             end
         end
         
+%         function F = F(O,x)
+%             % eta  - modal unknowns
+%             % S - function handle to the nonlinearity
+%             % f - external forcing
+%             S_array = SSR.evaluate_fun_over_array(O.S,x0,false);
+%             F = x + O.U * O.convolution_x(O.U.'*(S_array-));
+%         end
+        
+%         function DF = DF(O,x)
+%             cml = O.get_CML();
+%             DSC = cell(O.nt+1,1);
+%             BU = cell(O.nt+1,1);
+%             for j = 1:O.nt+1
+%                 DSC{j} = O.U.' * O.DS( x(:,j) ) ;
+%                 BU{j} = O.U;
+%             end
+%             D = spblkdiag(DSC{:});
+%             BU = spblkdiag(BU{:});
+%             DF = speye( (O.nt+1) * O.n ) + BU * cml * D;
+%         end
+        
         
         function [x,xd] = LinearResponse(O)
             % Compute modal forcing
-            phi = zeros(O.n,O.nt+1);
-            for j = 1:O.nt+1
-                phi(:,j) = O.U.'* O.f(O.t(j),O.T);
-            end
+            phi = O.U.' * O.Ft;
             % Compute modal response by convolution with Green's function
             eta = convolution_x(O,phi);
             etad = convolution_xd(O,phi);
@@ -267,14 +299,13 @@ classdef SSR < handle
             [x0,tol,maxiter] = parse_iteration_inputs(O,varargin);
             %% Initialization
             count = 1;
-            F = O.f(O.t,O.T); % forcing evaluated on the time array
             r = 1;
             
             %% Iteration
             while r>tol
                 % Evaluate the map G_P
                 S_array = SSR.evaluate_fun_over_array(O.S,x0,false);
-                eta = O.convolution_x( O.U.' * (F - S_array) );
+                eta = O.convolution_x( O.U.' * (O.Ft - S_array) );
                 x = O.U * eta;
                 % convergence check
                 r = O.dt * norm(x-x0,Inf)/norm(x0,Inf);
@@ -284,12 +315,44 @@ classdef SSR < handle
                     x = nan(size(x0));
                     xd = nan(size(x0));
                     return
-                end                
+                end
                 x0 = x;
                 count = count + 1;
-            end            
-            xd = O.U * O.convolution_xd( O.U.' * (F - S_array) );
+            end
+            xd = O.U * O.convolution_xd( O.U.' * (O.Ft - S_array) );
         end
+        
+%         function [x, xd] = NewtonIteration(O,varargin)
+%             % perform Newton--Raphson iteration starting with an optional
+%             % initial guess, optional maximum number of iterations and
+%             % optional tolerance
+%             [x0,tol,maxiter] = parse_iteration_inputs(O,varargin);
+%             
+%             count = 1;
+%             while 1
+%                 F = O.F(x0);
+%                 DF = O.DF(x0);
+%                 mu = -DF\F(:);
+%                 x = x0 + reshape(mu,size(x0));
+%                 c = norm(x-x0,Inf)/norm(x0,Inf);
+%                 disp(['Iteration ' num2str(count) ': ' 'c = ' num2str(c), 'r = ' num2str(norm(F(:)))])
+%                 if c < tol
+%                     break
+%                 elseif isnan(c) || count>maxiter
+%                     x = nan(size(x0));
+%                     %                     xd = nan(size(x0));
+%                     warning('Newton iterations did not converge')
+%                     xd = nan(size(x0));
+%                     return
+%                 end
+%                 x0 = x;
+%                 count = count + 1;
+%             end
+%             [e, ed] = O.convolution1(O.U.'*(O.f(O.t,O.T) - ArrayS(O.S,x)));
+%             x = O.U * e;
+%             xd = O.U * ed;
+%         end
+        
         function [x0,tol,maxiter] = parse_iteration_inputs(O,inputs)
             % function used for parsing interation inputs
             defaultTol = 1e-6;
@@ -304,7 +367,7 @@ classdef SSR < handle
             maxiter = p.Results.maxiter;
             tol = p.Results.tol;
         end
-  
+        
     end
     methods(Static)
         function w = NewtonCotes(order)
@@ -341,8 +404,8 @@ classdef SSR < handle
             end
         end
         
-
-
+        
+        
         
     end
 end
