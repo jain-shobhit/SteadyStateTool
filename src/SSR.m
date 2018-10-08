@@ -15,9 +15,9 @@ classdef SSR < handle
         Df              % function handle for derivative of the forcing w.r.t time period T
         order = 1       % order if integration: Newton Cotes is used (existing steps are refined)
         n_steps = 50    % number of intervals in the time domain: 50 by default
-%     end
-%     
-%     properties (Access = private)
+        %     end
+        %
+        %     properties (Access = private)
         alpha           % constants defined in (27)
         omega           % constants defined in (27)
         beta            % constants defined in (27)
@@ -63,7 +63,7 @@ classdef SSR < handle
         
         function set.T(O,T)
             if isempty(O.T) || O.T ~= T
-                O.T = T;                
+                O.T = T;
                 update_t(O);
             end
         end
@@ -117,7 +117,7 @@ classdef SSR < handle
         function update_Lvec(O)
             ell = L(O,O.t,O.T);
             O.Lvec = [ell(:,1:end-1), ell]; % padding Green's function to ensure correct convolution
-            O.isupdated.L = true;            
+            O.isupdated.L = true;
         end
         
         function L = L(O,t,T)
@@ -175,7 +175,7 @@ classdef SSR < handle
         function update_Jvec(O)
             jay = J(O,O.t,O.T);
             O.Jvec = [jay(:,1:end-1), jay]; % padding Green's function to ensure correct convolution
-            O.isupdated.J = true;            
+            O.isupdated.J = true;
         end
         
         function J = J(O,t,T)
@@ -230,6 +230,23 @@ classdef SSR < handle
             end
         end
         
+        function eta = convolution_x(O,phi)
+            % convolution with L to obtain velocities
+            eta = zeros(size(phi));
+            for j = 1:O.n
+                eta(j,:) = O.dt*conv(O.weights.* phi(j,:),O.Lvec(j,:),'same');
+            end
+        end
+        
+        function etad = convolution_xd(O,phi)
+            % convolution with J to obtain velocities
+            etad = zeros(size(phi));
+            for j = 1:O.n
+                etad(j,:) = O.dt*conv(O.weights.* phi(j,:),O.Jvec(j,:),'same');
+            end
+        end
+        
+        
         function [x,xd] = LinearResponse(O)
             % Compute modal forcing
             phi = zeros(O.n,O.nt+1);
@@ -237,18 +254,57 @@ classdef SSR < handle
                 phi(:,j) = O.U.'* O.f(O.t(j),O.T);
             end
             % Compute modal response by convolution with Green's function
-            eta = zeros(size(phi));
-            etad = zeros(size(phi));
-            for j = 1:O.n 
-                eta(j,:) = O.dt*conv(O.weights.* phi(j,:),O.Lvec(j,:),'same');                
-                etad(j,:) = O.dt*conv(O.weights.* phi(j,:),O.Jvec(j,:),'same');
-            end
+            eta = convolution_x(O,phi);
+            etad = convolution_xd(O,phi);
             x = O.U*eta;
             xd = O.U*etad;
         end
+        
+        function [x, xd] = Picard(O,varargin)
+            % perform Picard iteration starting with optional initial guess
+            % optional maximum number of iterations, and optional tolerance
             
+            %% Parsing inputs
+            defaultTol = 1e-6;
+            defaultInit = O.LinearResponse();
+            defaultmaxiter = 20;
+            p = inputParser;
+            addOptional(p,'tol',defaultTol)
+            addOptional(p,'init',defaultInit)
+            addOptional(p,'maxiter',defaultmaxiter)
+            parse(p,varargin{:});
+            x0 = p.Results.init;
+            maxiter = p.Results.maxiter;
+            tol = p.Results.tol;
+            
+            %% Initialization
+            count = 1;
+            F = O.f(O.t,O.T); % forcing evaluated on the time array
+            r = 1;
+            
+            %% Iteration
+            while r>tol
+                % Evaluate the map G_P
+                S_array = SSR.evaluate_fun_over_array(O.S,x0,false);
+                eta = O.convolution_x( O.U.' * (F - S_array) );
+                x = O.U * eta;
+                % convergence check
+                r = O.dt * norm(x-x0,Inf)/norm(x0,Inf);
+                disp(['Iteration ' num2str(count) ': ' 'r = ' num2str(r)])
+                if count>maxiter
+                    warning('Picard iteration did not converge')
+                    x = nan(size(x0));
+                    xd = nan(size(x0));
+                    return
+                end                
+                x0 = x;
+                count = count + 1;
+            end            
+            xd = O.U * O.convolution_xd( O.U.' * (F - S_array) );
+        end
+        
+        
     end
-    
     methods(Static)
         function w = NewtonCotes(order)
             % returns the weights corresponding to the appropriate order for performing
@@ -267,6 +323,21 @@ classdef SSR < handle
         
         function h = h(t)
             h = t>0; % use overloading of the logical operator
+        end
+        
+        function F = evaluate_fun_over_array(f,x,vectorized)
+            % accepts single argument functions and evaluates them over
+            % array x
+            if vectorized
+                F = f(x);
+            else
+                F0 = f(x(:,1));
+                F = zeros(size(F0,1),size(x,2));
+                F(:,1) = F0;
+                for j = 2:size(x,2)
+                    F(:,j) = f(x(:,j));
+                end
+            end
         end
         
     end
