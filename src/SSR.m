@@ -264,19 +264,7 @@ classdef SSR < handle
             % perform Picard iteration starting with optional initial guess
             % optional maximum number of iterations, and optional tolerance
             
-            %% Parsing inputs
-            defaultTol = 1e-6;
-            defaultInit = O.LinearResponse();
-            defaultmaxiter = 20;
-            p = inputParser;
-            addOptional(p,'tol',defaultTol)
-            addOptional(p,'init',defaultInit)
-            addOptional(p,'maxiter',defaultmaxiter)
-            parse(p,varargin{:});
-            x0 = p.Results.init;
-            maxiter = p.Results.maxiter;
-            tol = p.Results.tol;
-            
+            [x0,tol,maxiter] = parse_iteration_inputs(O,varargin);
             %% Initialization
             count = 1;
             F = O.f(O.t,O.T); % forcing evaluated on the time array
@@ -302,8 +290,21 @@ classdef SSR < handle
             end            
             xd = O.U * O.convolution_xd( O.U.' * (F - S_array) );
         end
-        
-        
+        function [x0,tol,maxiter] = parse_iteration_inputs(O,inputs)
+            % function used for parsing interation inputs
+            defaultTol = 1e-6;
+            defaultInit = O.LinearResponse();
+            defaultmaxiter = 20;
+            p = inputParser;
+            addOptional(p,'tol',defaultTol)
+            addOptional(p,'init',defaultInit)
+            addOptional(p,'maxiter',defaultmaxiter)
+            parse(p,inputs{:});
+            x0 = p.Results.init;
+            maxiter = p.Results.maxiter;
+            tol = p.Results.tol;
+        end
+  
     end
     methods(Static)
         function w = NewtonCotes(order)
@@ -339,6 +340,9 @@ classdef SSR < handle
                 end
             end
         end
+        
+
+
         
     end
 end
