@@ -244,6 +244,29 @@ classdef SSR < handle
             end
         end
         
+        function CM = get_ConvMtx(O)
+            if O.isupdated.CML
+                CM = O.ConvMtx;
+            else
+                update_ConvMtx(O);
+                CM = O.ConvMtx;
+            end            
+        end
+        
+        function update_ConvMtx(O)
+            % This function computes the derivative of the convolution map.
+            m = O.n; n_t = O.nt+1;
+            CM = sparse( n_t * m,n_t * m );
+            for j = 1:m
+                ML = convmtx( O.dt*O.Lvec(j,:).', n_t );
+                ML = ML(n_t: 2*O.nt+1,:);
+                CM(j:m:end,j:m:end) = ML;
+            end
+            w = repmat(O.weights,n_t,1);
+            O.ConvMtx = CM * spdiags(w(:),0,sparse(n_t * m,n_t * m) );            
+            O.isupdated.CML = true;
+        end
+        
         function eta = convolution_x(O,phi)
             % convolution with L to obtain velocities
             eta = zeros(size(phi));
@@ -260,27 +283,28 @@ classdef SSR < handle
             end
         end
         
-%         function F = F(O,x)
-%             % eta  - modal unknowns
-%             % S - function handle to the nonlinearity
-%             % f - external forcing
-%             S_array = SSR.evaluate_fun_over_array(O.S,x0,false);
-%             F = x + O.U * O.convolution_x(O.U.'*(S_array-));
-%         end
+        function F_P = F_P(O,x)
+            % function to evaluate the zero function for periodic forcing 
+            % eta  - modal unknowns
+            % S - function handle to the nonlinearity
+            % f - external forcing
+            S_array = SSR.evaluate_fun_over_array(O.S,x,false);
+            F_P = x + O.U * O.convolution_x(O.U.'*(S_array-O.Ft));
+        end
         
-%         function DF = DF(O,x)
-%             cml = O.get_CML();
-%             DSC = cell(O.nt+1,1);
-%             BU = cell(O.nt+1,1);
-%             for j = 1:O.nt+1
-%                 DSC{j} = O.U.' * O.DS( x(:,j) ) ;
-%                 BU{j} = O.U;
-%             end
-%             D = spblkdiag(DSC{:});
-%             BU = spblkdiag(BU{:});
-%             DF = speye( (O.nt+1) * O.n ) + BU * cml * D;
-%         end
-        
+        function DF_P = DF_P(O,x)
+            % function to evaluate derivative of the zero function for 
+            % periodic forcing, currently quite expensive
+            DSC = cell(O.nt+1,1);
+            BU = cell(O.nt+1,1);
+            for j = 1:O.nt+1
+                DSC{j} = O.U.' * O.DS( x(:,j) ) ;
+                BU{j} = O.U;
+            end
+            D = spblkdiag(DSC{:});
+            BU = spblkdiag(BU{:});
+            DF_P = speye( (O.nt+1) * O.n ) + BU * get_ConvMtx(O) * D;
+        end        
         
         function [x,xd] = LinearResponse(O)
             % Compute modal forcing
@@ -322,36 +346,33 @@ classdef SSR < handle
             xd = O.U * O.convolution_xd( O.U.' * (O.Ft - S_array) );
         end
         
-%         function [x, xd] = NewtonIteration(O,varargin)
-%             % perform Newton--Raphson iteration starting with an optional
-%             % initial guess, optional maximum number of iterations and
-%             % optional tolerance
-%             [x0,tol,maxiter] = parse_iteration_inputs(O,varargin);
-%             
-%             count = 1;
-%             while 1
-%                 F = O.F(x0);
-%                 DF = O.DF(x0);
-%                 mu = -DF\F(:);
-%                 x = x0 + reshape(mu,size(x0));
-%                 c = norm(x-x0,Inf)/norm(x0,Inf);
-%                 disp(['Iteration ' num2str(count) ': ' 'c = ' num2str(c), 'r = ' num2str(norm(F(:)))])
-%                 if c < tol
-%                     break
-%                 elseif isnan(c) || count>maxiter
-%                     x = nan(size(x0));
-%                     %                     xd = nan(size(x0));
-%                     warning('Newton iterations did not converge')
-%                     xd = nan(size(x0));
-%                     return
-%                 end
-%                 x0 = x;
-%                 count = count + 1;
-%             end
-%             [e, ed] = O.convolution1(O.U.'*(O.f(O.t,O.T) - ArrayS(O.S,x)));
-%             x = O.U * e;
-%             xd = O.U * ed;
-%         end
+        function [x, xd] = NewtonRaphson(O,varargin)
+            % perform Newton--Raphson iteration starting with an optional
+            % initial guess, optional maximum number of iterations and
+            % optional tolerance
+            [x0,tol,maxiter] = parse_iteration_inputs(O,varargin);
+            
+            count = 1;
+            r=1;
+            while r>tol
+                F = F_P(O,x0);      % evaluation of the zero function
+                DF = DF_P(O,x0);    % derivative of zero function
+                mu = -DF\F(:);      % correction to the solution guess
+                x = x0 + reshape(mu,size(x0));  % new solution guess
+                r = norm(x-x0,Inf)/norm(x0,Inf);
+                disp(['Iteration ' num2str(count) ': ' '||dx||/||x|| = ' num2str(r), ' residual = ' num2str(norm(F(:)))])
+                if count>maxiter
+                    x = nan(size(x0));
+                    xd = nan(size(x0));
+                    warning('Newton iterations did not converge')
+                    return
+                end
+                x0 = x;
+                count = count + 1;
+            end
+            S_array = SSR.evaluate_fun_over_array(O.S,x,false);
+            xd = O.U * O.convolution_xd(O.U.'*(O.Ft - S_array));
+         end
         
         function [x0,tol,maxiter] = parse_iteration_inputs(O,inputs)
             % function used for parsing interation inputs

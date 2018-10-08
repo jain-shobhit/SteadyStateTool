@@ -48,8 +48,8 @@ SS.S = S;           % Setting the nonlinearity
 [x_picard,xd_picard] = SS.Picard('init',x_lin,'tol',1e-3,'maxiter',20); % 'init', 'maxiter', 'tol' are optional arguments 
 hold on; plot(SS.t, x_picard, 'DisplayName', 'Picard');
 
-% % Nonlinear response with Newton--Raphson iteration
-% SS.DS = DS;         % Setting the derivative
-% [x_newton,xd_newton] = SS.NewtonRaphson(); % find out response using Picard iteration
+% Nonlinear response with Newton--Raphson iteration
+SS.DS = DS;         % Setting the derivative
+[x_newton,xd_newton] = SS.NewtonRaphson(); % find out response using Picard iteration
 
 
