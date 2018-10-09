@@ -248,3 +248,7 @@ TSWLatexianTemp*
 
 # generated if using elsarticle.cls
 *.spl
+
+# LyX files
+*.lyx
+*.lyx~
