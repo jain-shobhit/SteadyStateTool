@@ -26,7 +26,8 @@ classdef SSR < handle
         o               % indices of overdamped modes
         c               % indices of critically damped modes
         u               % indices of underdamped modes
-        n               % number of dofs
+        n               % number of DOFs
+        xi              % time steps size (T/n_steps)
         t               % time vector 0:dt:T
         dt              % length of each time interval (T/nt)
         Lvec            % Green's function for displacements (calculated over -T:dt:T)
@@ -98,10 +99,17 @@ classdef SSR < handle
         end
         
         function update_t(O)
-            O.nt = O.n_steps*O.order + 1; % first set n_steps
-            w = SSR.NewtonCotes(O.order); % weights for integration over an interval
-            w0 = [w(2:end-1) w(1)+w(end)]; % repeating block in the weights vector
-            O.weights = O.order*[w(1) repmat(w0,1,O.n_steps-1) w(2:end)]; % weights for the whole grid            
+            O.xi = O.T/O.n_steps;
+            if O.order                
+                O.nt = O.n_steps*O.order + 1; % first set n_steps
+                w = SSR.NewtonCotes(O.order); % weights for integration over an interval
+                w0 = [w(2:end-1) w(1)+w(end)]; % repeating block in the weights vector
+                O.weights = O.xi*O.order*[w(1) repmat(w0,1,O.n_steps-1) w(2:end)]; % weights for the whole grid
+            else
+                O.nt = O.n_steps + 1;
+                O.weights = O.xi;
+            end
+            
             O.dt = O.T/(O.nt - 1);
             O.t = 0:O.dt:O.T;
             not_updated(O);
@@ -127,10 +135,11 @@ classdef SSR < handle
         
         function update_Ft(O)
             O.Ft = O.f(O.t,O.T);
+            O.isupdated.Ft = true;
         end
         
         function update_Lvec(O)
-            t1 = -O.T:O.dt:O.T; % padding Green's function to ensure correct convolution            
+            t1 = -O.T:O.dt:O.T; % padding Green's function to ensure correct convolution
             O.Lvec = L(O,t1,O.T);
             O.isupdated.L = true;
         end
@@ -251,20 +260,25 @@ classdef SSR < handle
             else
                 update_ConvMtx(O);
                 CM = O.ConvMtx;
-            end            
+            end
         end
         
         function update_ConvMtx(O)
             % This function computes the derivative of the convolution map.
-            m = O.n; n_t = O.nt;
-            CM = sparse( n_t * m,n_t * m );
-            for j = 1:m
-                ML = convmtx( O.dt*O.Lvec(j,:).', n_t );
-                ML = ML(n_t: 2*O.nt-1,:);
-                CM(j:m:end,j:m:end) = ML;
+            N = O.nt * O.n; 
+            CM = sparse(N,N);
+            for j = 1:O.n
+                ML = convmtx(O.Lvec(j,:).', O.nt);
+                ML = ML(O.nt : 2*O.nt-1,:);
+                CM(j:O.n:end,j:O.n:end) = ML;
             end
-            w = repmat(O.weights,n_t,1);
-            O.ConvMtx = CM * spdiags(w(:),0,sparse(n_t * m,n_t * m) );            
+            
+            if O.order
+                w = repmat(O.weights,O.n,1);
+                O.ConvMtx = CM * spdiags(w(:),0,sparse(N,N) );
+            else
+                O.ConvMtx = CM * O.weights;
+            end
             O.isupdated.CML = true;
         end
         
@@ -272,7 +286,7 @@ classdef SSR < handle
             % convolution with L to obtain velocities
             eta = zeros(size(phi));
             for j = 1:O.n
-                eta(j,:) = O.dt*conv(O.weights.* phi(j,:),O.Lvec(j,:),'same');
+                eta(j,:) = conv(O.weights.* phi(j,:),O.Lvec(j,:),'same');
             end
         end
         
@@ -280,12 +294,12 @@ classdef SSR < handle
             % convolution with J to obtain velocities
             etad = zeros(size(phi));
             for j = 1:O.n
-                etad(j,:) = O.dt*conv(O.weights.* phi(j,:),O.Jvec(j,:),'same');
+                etad(j,:) = conv(O.weights.* phi(j,:),O.Jvec(j,:),'same');
             end
         end
         
         function F_P = F_P(O,x)
-            % function to evaluate the zero function for periodic forcing 
+            % function to evaluate the zero function for periodic forcing
             % eta  - modal unknowns
             % S - function handle to the nonlinearity
             % f - external forcing
@@ -294,7 +308,7 @@ classdef SSR < handle
         end
         
         function DF_P = DF_P(O,x)
-            % function to evaluate derivative of the zero function for 
+            % function to evaluate derivative of the zero function for
             % periodic forcing, currently quite expensive
             DSC = cell(O.nt,1);
             BU = cell(O.nt,1);
@@ -305,7 +319,7 @@ classdef SSR < handle
             D = spblkdiag(DSC{:});
             BU = spblkdiag(BU{:});
             DF_P = speye( O.nt * O.n ) + BU * get_ConvMtx(O) * D;
-        end        
+        end
         
         function [x,xd] = LinearResponse(O)
             % Compute modal forcing
@@ -373,7 +387,7 @@ classdef SSR < handle
             end
             S_array = SSR.evaluate_fun_over_array(O.S,x,false);
             xd = O.U * O.convolution_xd(O.U.'*(O.Ft - S_array));
-         end
+        end
         
         function [x0,tol,maxiter] = parse_iteration_inputs(O,inputs)
             % function used for parsing interation inputs

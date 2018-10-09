@@ -31,8 +31,7 @@ Df = @(t,T)-(alpha*2*pi/(T^2))*f0*(cos(2*pi*t/T).*t); % derivative of
                                                       % w.r.t. T
 
 %% Linear response
-Omega = 0.25;   % forcing frequency
-
+Omega = 0.25;       % forcing frequency
 SS = SSR(M,C,K);    % Instantiating the SSR package    
 SS.f = f;           % setting the forcing
 SS.T = 2*pi/Omega;  % setting the time period at which periodic loading is applied 
@@ -50,6 +49,7 @@ hold on; plot(SS.t, x_picard, 'DisplayName', 'Picard');
 
 % Nonlinear response with Newton--Raphson iteration
 SS.DS = DS;         % Setting the derivative
+SS.order = 4;
 [x_newton,xd_newton] = SS.NewtonRaphson(); % find out response using Picard iteration
 
 
