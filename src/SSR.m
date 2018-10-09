@@ -98,11 +98,11 @@ classdef SSR < handle
         end
         
         function update_t(O)
-            O.nt = O.n_steps*O.order; % first set n_steps
-            w = SSR.NewtonCotes(O.order);
-            w0 = [w(2:end-1) 2*w(end)];
-            O.weights = O.order*[w(1) repmat(w0,1,O.n_steps-1) w(2:end)];
-            O.dt = O.T/O.nt;
+            O.nt = O.n_steps*O.order + 1; % first set n_steps
+            w = SSR.NewtonCotes(O.order); % weights for integration over an interval
+            w0 = [w(2:end-1) w(1)+w(end)]; % repeating block in the weights vector
+            O.weights = O.order*[w(1) repmat(w0,1,O.n_steps-1) w(2:end)]; % weights for the whole grid            
+            O.dt = O.T/(O.nt - 1);
             O.t = 0:O.dt:O.T;
             not_updated(O);
         end
@@ -128,9 +128,10 @@ classdef SSR < handle
         function update_Ft(O)
             O.Ft = O.f(O.t,O.T);
         end
+        
         function update_Lvec(O)
-            ell = L(O,O.t,O.T);
-            O.Lvec = [ell(:,1:end-1), ell]; % padding Green's function to ensure correct convolution
+            t1 = -O.T:O.dt:O.T; % padding Green's function to ensure correct convolution            
+            O.Lvec = L(O,t1,O.T);
             O.isupdated.L = true;
         end
         
@@ -187,8 +188,8 @@ classdef SSR < handle
         end
         
         function update_Jvec(O)
-            jay = J(O,O.t,O.T);
-            O.Jvec = [jay(:,1:end-1), jay]; % padding Green's function to ensure correct convolution
+            t1 = -O.T:O.dt:O.T; % padding Green's function to ensure correct convolution
+            O.Jvec = J(O,t1,O.T);
             O.isupdated.J = true;
         end
         
@@ -255,11 +256,11 @@ classdef SSR < handle
         
         function update_ConvMtx(O)
             % This function computes the derivative of the convolution map.
-            m = O.n; n_t = O.nt+1;
+            m = O.n; n_t = O.nt;
             CM = sparse( n_t * m,n_t * m );
             for j = 1:m
                 ML = convmtx( O.dt*O.Lvec(j,:).', n_t );
-                ML = ML(n_t: 2*O.nt+1,:);
+                ML = ML(n_t: 2*O.nt-1,:);
                 CM(j:m:end,j:m:end) = ML;
             end
             w = repmat(O.weights,n_t,1);
@@ -295,15 +296,15 @@ classdef SSR < handle
         function DF_P = DF_P(O,x)
             % function to evaluate derivative of the zero function for 
             % periodic forcing, currently quite expensive
-            DSC = cell(O.nt+1,1);
-            BU = cell(O.nt+1,1);
-            for j = 1:O.nt+1
+            DSC = cell(O.nt,1);
+            BU = cell(O.nt,1);
+            for j = 1:O.nt
                 DSC{j} = O.U.' * O.DS( x(:,j) ) ;
                 BU{j} = O.U;
             end
             D = spblkdiag(DSC{:});
             BU = spblkdiag(BU{:});
-            DF_P = speye( (O.nt+1) * O.n ) + BU * get_ConvMtx(O) * D;
+            DF_P = speye( O.nt * O.n ) + BU * get_ConvMtx(O) * D;
         end        
         
         function [x,xd] = LinearResponse(O)
