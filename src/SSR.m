@@ -98,9 +98,9 @@ classdef SSR < handle
         end
         
         function update_t(O)
-            if O.order                
+            if O.order
                 O.nt = O.n_steps*O.order + 1; % first set n_steps
-                O.dt = O.T/(O.nt - 1);        % time node spacing  
+                O.dt = O.T/(O.nt - 1);        % time node spacing
                 w = SSR.NewtonCotes(O.order); % weights for integration over an interval
                 w0 = [w(2:end-1) w(1)+w(end)]; % repeating block in the weights vector
                 O.weights = O.dt*[w(1) repmat(w0,1,O.n_steps-1) w(2:end)]; % weights for the whole grid
@@ -108,7 +108,7 @@ classdef SSR < handle
                 O.nt = O.n_steps + 1;
                 O.dt = O.T/(O.nt - 1);
                 O.weights = O.dt;
-            end           
+            end
             
             O.t = 0:O.dt:O.T;
             not_updated(O);
@@ -264,7 +264,7 @@ classdef SSR < handle
         
         function update_ConvMtx(O)
             % This function computes the derivative of the convolution map.
-            N = O.nt * O.n; 
+            N = O.nt * O.n;
             I = zeros(O.n*O.nt^2,1);
             J = zeros(O.n*O.nt^2,1);
             val = zeros(O.n*O.nt^2,1);
@@ -273,7 +273,7 @@ classdef SSR < handle
                 ML = ML(O.nt : 2*O.nt-1,:);
                 I((j-1)*O.nt^2 + 1 : j*O.nt^2) = repmat(j:O.n:N,1,O.nt);
                 col = repmat(j:O.n:N,O.nt,1);
-                J((j-1)*O.nt^2 + 1 : j*O.nt^2) = col(:);                
+                J((j-1)*O.nt^2 + 1 : j*O.nt^2) = col(:);
                 val((j-1)*O.nt^2 + 1 : j*O.nt^2) = ML(:);
             end
             CM = sparse(I,J,val,N,N);
@@ -352,12 +352,9 @@ classdef SSR < handle
                 x = O.U * eta;
                 % convergence check
                 r = O.dt * norm(x-x0,Inf)/norm(x0,Inf);
-                disp(['Iteration ' num2str(count) ': ' 'r = ' num2str(r)])
-                if count>maxiter
-                    warning('Picard iteration did not converge')
-                    x = nan(size(x0));
-                    xd = nan(size(x0));
-                    return
+                disp(['Iteration ' num2str(count) ': ' 'relative change = ' num2str(r)])
+                if count>maxiter || isnan(r)
+                    error('Picard iteration did not converge')
                 end
                 x0 = x;
                 count = count + 1;
@@ -380,10 +377,10 @@ classdef SSR < handle
                 x = x0 + reshape(mu,size(x0));  % new solution guess
                 r = norm(x-x0,Inf)/norm(x0,Inf);
                 disp(['Iteration ' num2str(count) ': ' '||dx||/||x|| = ' num2str(r), ' residual = ' num2str(norm(F(:)))])
-                if count>maxiter
-                    x = nan(size(x0));
-                    xd = nan(size(x0));
+                if count>maxiter || isnan(r)
                     warning('Newton iterations did not converge')
+                    x = [];
+                    xd = [];
                     return
                 end
                 x0 = x;
@@ -394,7 +391,7 @@ classdef SSR < handle
         end
         
         function [x0,tol,maxiter] = parse_iteration_inputs(O,inputs)
-            % function used for parsing interation inputs
+            % this method used for parsing interation inputs
             defaultTol = 1e-6;
             defaultInit = O.LinearResponse();
             defaultmaxiter = 20;
@@ -408,7 +405,47 @@ classdef SSR < handle
             tol = p.Results.tol;
         end
         
+        function [T_array, sol] = sequential_continuation(O,T_range,varargin)
+            % this method performs sequential continuation of periodic
+            % response assuming the time-period (T) of the solution to be
+            % the continuation parameter. Warning: this scheme cannot
+            % capture fold points in the frequency response curves.
+            
+            T0 = T_range(1); % the time period for the initial solution
+            O.T = T0;
+            x0 = LinearResponse(O);
+            n_cont_steps = 100; % number of continuation steps
+            
+            dT = diff(T_range)/n_cont_steps;
+            T_array = T_range(1):dT:T_range(2);
+            sol = cell(1,n_cont_steps);
+            try_Picard = true;
+            
+            for j = 1:n_cont_steps
+                T0 = T_array(j);
+                O.T = T0;
+                
+                if isempty(x0)
+                    x0 = LinearResponse(O);
+                end
+                
+                if try_Picard
+                    try
+                        [x0, xd0] = Picard(O,'init',x0);
+                    catch
+                        disp('Switching to Newton--Raphson iteration')
+                        try_Picard = false;
+                        [x0, xd0] = NewtonRaphson(O,'init',x0);
+                    end
+                else
+                    [x0, xd0] = NewtonRaphson(O,'init',x0);
+                end                                
+                sol{j} = [x0;xd0];                
+            end
+            
+        end
     end
+    
     methods(Static)
         function w = NewtonCotes(order)
             % returns the weights corresponding to the appropriate order for performing
@@ -443,10 +480,6 @@ classdef SSR < handle
                 end
             end
         end
-        
-        
-        
-        
     end
 end
 

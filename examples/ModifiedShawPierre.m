@@ -38,7 +38,8 @@ SS = SSR(M,C,K);    % Instantiating the SSR package
 SS.f = f;           % setting the forcing
 SS.T = T;           % setting the time period at which periodic loading is applied
 SS.n_steps = 50;    % setting the number of time intervals within the time period
-SS.order = 1;       % seeting the order of integration
+SS.order = 1;       % setting the order of integration, permissible values 
+                    % are 0,1,2,3,4
 
 [x_lin, xd_lin] = SS.LinearResponse();
 t_lin = SS.t;
@@ -91,4 +92,6 @@ for j = 1:n
     axis tight; grid on; legend('show')
 
 end
-
+%% sequential continuation
+T_range = [6 14];
+[T_array,cont_sol] = SS.sequential_continuation(T_range);
