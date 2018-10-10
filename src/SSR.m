@@ -27,9 +27,8 @@ classdef SSR < handle
         c               % indices of critically damped modes
         u               % indices of underdamped modes
         n               % number of DOFs
-        xi              % time steps size (T/n_steps)
         t               % time vector 0:dt:T
-        dt              % length of each time interval (T/nt)
+        dt              % node spacing in the time mesh (T/nt)
         Lvec            % Green's function for displacements (calculated over -T:dt:T)
         DLvec           % Derivative dLdT
         Jvec               % Green's function for velocities (calculated over -T:dt:T)
@@ -99,18 +98,18 @@ classdef SSR < handle
         end
         
         function update_t(O)
-            O.xi = O.T/O.n_steps;
             if O.order                
                 O.nt = O.n_steps*O.order + 1; % first set n_steps
+                O.dt = O.T/(O.nt - 1);        % time node spacing  
                 w = SSR.NewtonCotes(O.order); % weights for integration over an interval
                 w0 = [w(2:end-1) w(1)+w(end)]; % repeating block in the weights vector
-                O.weights = O.xi*O.order*[w(1) repmat(w0,1,O.n_steps-1) w(2:end)]; % weights for the whole grid
+                O.weights = O.dt*[w(1) repmat(w0,1,O.n_steps-1) w(2:end)]; % weights for the whole grid
             else
                 O.nt = O.n_steps + 1;
-                O.weights = O.xi;
-            end
+                O.dt = O.T/(O.nt - 1);
+                O.weights = O.dt;
+            end           
             
-            O.dt = O.T/(O.nt - 1);
             O.t = 0:O.dt:O.T;
             not_updated(O);
         end
@@ -418,11 +417,11 @@ classdef SSR < handle
                 case 1
                     w = [1 1]/2;
                 case 2
-                    w = [1 4 1]/6;
+                    w = [1 4 1]/3;
                 case 3
-                    w = [1 3 3 1]/8;
+                    w = [1 3 3 1]*(3/8);
                 case 4
-                    w = [7 32 12 32 7]/90;
+                    w = [7 32 12 32 7]*(2/45);
             end
         end
         

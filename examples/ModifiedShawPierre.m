@@ -38,7 +38,7 @@ SS = SSR(M,C,K);    % Instantiating the SSR package
 SS.f = f;           % setting the forcing
 SS.T = T;           % setting the time period at which periodic loading is applied
 SS.n_steps = 50;    % setting the number of time intervals within the time period
-SS.order = 2;       % seeting the order of integration
+SS.order = 1;       % seeting the order of integration
 
 [x_lin, xd_lin] = SS.LinearResponse();
 t_lin = SS.t;
