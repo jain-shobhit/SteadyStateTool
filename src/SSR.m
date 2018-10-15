@@ -15,6 +15,7 @@ classdef SSR < handle
         Df              % function handle for derivative of the forcing w.r.t time period T
         order = 1       % order if integration: Newton Cotes is used (existing steps are refined)
         n_steps = 50    % number of intervals in the time domain: 50 by default
+        domain = 'time' % calculations performed in time domain or frequency domain
         %     end
         %
         %     properties (Access = private)
@@ -37,6 +38,9 @@ classdef SSR < handle
         weights         % Weights vector for higher order integration
         nt              % number of nodes in the time mesh
         Ft              % forcing evaluated over time mesh
+        nh              % number of harmonics in of the base frequency Omega
+        kappa_set       % the set of frequency-indices used during Fourier transformation
+        Qmat            % the global Q matrix containing the Green's function (amplification factors) for freq domain analysis
     end
     
     methods
@@ -63,26 +67,36 @@ classdef SSR < handle
         end
         
         function set.T(O,T)
-            if isempty(O.T) || O.T ~= T
+            if ~isequal(O.T,T)
                 O.T = T;
                 update_t(O);
             end
         end
         
         function set.Omega(O,Omega)
-            if isempty(O.Omega) || O.Omega ~= Omega
+            if size(Omega,1) > 1
+                Omega = Omega.';
+            end
+            if ~isequal(O.Omega, Omega)
                 O.Omega = Omega;
                 not_updated(O);
             end
         end
         
         function not_updated(O)
-            update.L = false;
-            update.J = false;
-            update.CML = false;
-            update.DL = false;
-            update.Ft = false;
-            O.isupdated = update;
+            switch O.domain
+                case 'time'
+                    update.L = false;
+                    update.J = false;
+                    update.CML = false;
+                    update.DL = false;
+                    update.Ft = false;
+                    O.isupdated = update;
+                case 'freq'
+                    update.Q = false;
+                    update.kappa = false;
+                    O.isupdated = update;
+            end
         end
         
         function set.order(O,order)
@@ -114,22 +128,57 @@ classdef SSR < handle
             not_updated(O);
         end
         
-        function Lvec = get.Lvec(O)
-            if O.isupdated.L
-                Lvec = O.Lvec;
-            else
-                update_Lvec(O);
-                Lvec = O.Lvec;
+        function set.nh(O,nh)
+            if ~isequal(O.nh, nh)
+                O.nh = nh;
+                not_updated(O);
+            end                
+        end
+        
+        function kappa = get.kappa_set(O)
+            if ~O.isupdated.kappa
+                update_kappa_set(O);                
             end
+            kappa = O.kappa_set;
+        end
+            
+        function update_kappa_set(O)
+            n_freq = length(O.Omega);
+            
+            % check inputs
+            if length(O.nh) ~= n_freq
+                if length(O.nh) == 1
+                    nmax = repmat(O.nh,n_freq,1);
+                else
+                    error(['dimenionality of number of harmonics entered' ...
+                    ' does not match the dimension of base frequency. '... 
+                    'Please check input dimensions']);                
+                end
+            else
+                nmax = O.nh;
+            end
+            
+            % compute kappas
+            range = cell(n_freq,1);
+            for j = 1:n_freq
+                range{j} = -nmax(j):nmax(j);
+            end            
+            O.kappa_set = combvec(range{:});            
+            O.isupdated.kappa = true;
+        end
+        
+        function Lvec = get.Lvec(O)
+            if ~O.isupdated.L
+                update_Lvec(O);
+            end
+            Lvec = O.Lvec;
         end
         
         function Ft = get.Ft(O)
-            if O.isupdated.Ft
-                Ft = O.Ft;
-            else
+            if ~O.isupdated.Ft
                 update_Ft(O);
-                Ft = O.Ft;
             end
+            Ft = O.Ft;
         end
         
         function update_Ft(O)
@@ -254,12 +303,10 @@ classdef SSR < handle
         end
         
         function CM = get_ConvMtx(O)
-            if O.isupdated.CML
-                CM = O.ConvMtx;
-            else
+            if ~O.isupdated.CML
                 update_ConvMtx(O);
-                CM = O.ConvMtx;
             end
+            CM = O.ConvMtx;
         end
         
         function update_ConvMtx(O)
@@ -286,6 +333,41 @@ classdef SSR < handle
             O.isupdated.CML = true;
         end
         
+        function Q = get.Qmat(O)
+            if ~O.isupdated.Q
+                update_Qmat(O);
+            end
+            Q = O.Qmat;
+        end          
+        
+        function update_Qmat(O)
+            kappas = O.kappa_set;
+            n_kappa = size(kappas,2);
+            Q_kappa = cell(n_kappa,1);
+                        
+            for j = 1:n_kappa
+                Q_T_kappa = zeros(O.n,1);
+                % underdamped modes
+                Q_T_kappa(O.u) = 1./( (1i* (O.Omega*kappas(:,j)) ...
+                    - O.alpha(O.u)).^2 + O.omega.^2);
+                % critically damped modes
+                if ~isempty(O.c)
+                    Q_T_kappa(O.c) = 1./(1i * (O.Omega*kappas(:,j)) ...
+                    - O.alpha(O.c)).^2;
+                end
+                % overdamped modes
+                if ~isempty(O.o)
+                    Q_T_kappa(O.o) = 1./( (O.beta(O.o) - ...
+                        1i * (O.Omega*kappas(:,j))).*(O.gamma(O.o) - ...
+                    1i * (O.Omega*kappas(:,j))) );
+                end                
+                Q_kappa{j} = O.U * diag(Q_T_kappa) * O.U.';
+            end
+            
+            O.Qmat = spblkdiag(Q_kappa{:});
+            O.isupdated.Q = true;
+        end
+            
         function eta = convolution_x(O,phi)
             % convolution with L to obtain velocities
             eta = zeros(size(phi));
