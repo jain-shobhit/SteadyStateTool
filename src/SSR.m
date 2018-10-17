@@ -32,7 +32,7 @@ classdef SSR < handle
         dt              % node spacing in the time mesh (T/nt)
         Lvec            % Green's function for displacements (calculated over -T:dt:T)
         DLvec           % Derivative dLdT
-        Jvec               % Green's function for velocities (calculated over -T:dt:T)
+        Jvec            % Green's function for velocities (calculated over -T:dt:T)
         ConvMtx         % convolution matrix for displacements
         isupdated       % check if different quantitities are updated according to T
         weights         % Weights vector for higher order integration
@@ -40,7 +40,15 @@ classdef SSR < handle
         Ft              % forcing evaluated over time mesh
         nh              % number of harmonics in of the base frequency Omega
         kappa_set       % the set of frequency-indices used during Fourier transformation
+        theta_set       % the set of torus coordinates over which the solution is approximated used during Fourier transformation
         Qmat            % the global Q matrix containing the Green's function (amplification factors) for freq domain analysis
+        f_theta         % function handle for forcing in torus coordinates
+        f_kappa         % Fourier coefficients for the external forcing 
+        m               % the discretization along each dimension of the Torus
+        E               % The Fourier transform exponential matrix
+        Einv            % The Fourier transform exponential matrix
+        Ekron           % The Fourier transform exponential matrix kronecker product with Identity
+        Einvkron        % The Fourier transform exponential matrix kronecker product with Identity
     end
     
     methods
@@ -95,6 +103,9 @@ classdef SSR < handle
                 case 'freq'
                     update.Q = false;
                     update.kappa = false;
+                    update.theta = false;
+                    update.f_kappa = false;
+                    update.E    = false; 
                     O.isupdated = update;
             end
         end
@@ -135,6 +146,43 @@ classdef SSR < handle
             end                
         end
         
+        function set.m(O,m)
+            if ~isequal(O.m, m)
+                O.m = m;
+                not_updated(O);
+            end                
+        end
+        
+        function theta = get.theta_set(O)
+            if ~O.isupdated.theta
+                update_theta_set(O);                
+            end
+            theta = O.kappa_set;
+        end
+            
+        function update_theta_set(O)
+            n_freq = length(O.Omega);            
+            % check inputs
+            if length(O.m) ~= n_freq
+                if length(O.m) == 1
+                    mmax = repmat(O.m,n_freq,1);
+                else
+                    error(['dimenionality of max. grid points number entered' ...
+                    ' does not match the dimension of base frequency. '... 
+                    'Please check input dimensions']);                
+                end
+            else
+                mmax = O.m;
+            end            
+            % compute kappas
+            range = cell(n_freq,1);
+            for j = 1:n_freq
+                range{j} = -mmax(j):mmax(j);
+            end            
+            O.theta_set = combvec(range{:});            
+            O.isupdated.theta = true;
+        end
+        
         function kappa = get.kappa_set(O)
             if ~O.isupdated.kappa
                 update_kappa_set(O);                
@@ -143,8 +191,7 @@ classdef SSR < handle
         end
             
         function update_kappa_set(O)
-            n_freq = length(O.Omega);
-            
+            n_freq = length(O.Omega);            
             % check inputs
             if length(O.nh) ~= n_freq
                 if length(O.nh) == 1
@@ -156,8 +203,7 @@ classdef SSR < handle
                 end
             else
                 nmax = O.nh;
-            end
-            
+            end            
             % compute kappas
             range = cell(n_freq,1);
             for j = 1:n_freq
@@ -185,6 +231,37 @@ classdef SSR < handle
             O.Ft = O.f(O.t,O.T);
             O.isupdated.Ft = true;
         end
+        
+        function E = get.E(O)
+            if ~O.isupdated.E
+                update_E(O);
+            end
+            E = O.E;
+        end
+        
+        function update_E(O)
+            kappa = O.kappa_set;
+            theta = O.theta_set;           
+            N = size(theta,2); % total number of elements on the torus
+            thetakappa = 2i*pi*theta.'*kappa;
+            O.E = exp(-thetakappa)/N;
+            O.Ekron = kron(O.E.',speye(O.n, O.n));
+            O.Einv = exp(thetakappa.');
+            O.Einvkron = kron(O.Einv.',speye(O.n, O.n));
+            O.isupdated.E = true;
+        end
+        
+        function f_kappa = get.f_kappa(O)
+             if ~O.isupdated.f_kappa
+                update_f_kappa(O);
+            end
+            f_kappa = O.f_kappa;            
+        end
+        
+        function update_f_kappa(O)            
+            O.f_kappa = O.f_theta(O.theta_set)*O.E;
+            O.isupdated.f_kappa = true;
+        end        
         
         function update_Lvec(O)
             t1 = -O.T:O.dt:O.T; % padding Green's function to ensure correct convolution
