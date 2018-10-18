@@ -482,6 +482,15 @@ classdef SSR < handle
             F_P = x + O.U * O.convolution_x(O.U.'*(S_array-O.Ft));
         end
         
+        function F_Q = F_Q(O,x_kappa)
+            % function to evaluate the zero function for periodic forcing
+            % S - function handle to the nonlinearity
+            % f - external forcing            
+            S_array = SSR.evaluate_fun_over_array(O.S,x,false);
+            F_P = x + O.U * O.convolution_x(O.U.'*(S_array-O.Ft));
+        end
+        
+        
         function DF_P = DF_P(O,x)
             % function to evaluate derivative of the zero function for
             % periodic forcing, currently quite expensive
@@ -521,23 +530,41 @@ classdef SSR < handle
             %% Initialization
             count = 1;
             r = 1;
-            
-            %% Iteration
-            while r>tol
-                % Evaluate the map G_P
-                S_array = SSR.evaluate_fun_over_array(O.S,x0,false);
-                eta = O.convolution_x( O.U.' * (O.Ft - S_array) );
-                x = O.U * eta;
-                % convergence check
-                r = O.dt * norm(x-x0,Inf)/norm(x0,Inf);
-                disp(['Iteration ' num2str(count) ': ' 'relative change = ' num2str(r)])
-                if count>maxiter || isnan(r)
-                    error('Picard iteration did not converge')
-                end
-                x0 = x;
-                count = count + 1;
+            switch O.domain
+                case 'time'
+                    %% Iteration
+                    while r>tol
+                        % Evaluate the map G_P
+                        S_array = SSR.evaluate_fun_over_array(O.S,x0,false);
+                        eta = O.convolution_x( O.U.' * (O.Ft - S_array) );
+                        x = O.U * eta;
+                        % convergence check
+                        r = norm(x-x0,Inf)/norm(x0,Inf);
+                        disp(['Iteration ' num2str(count) ': ' 'relative change = ' num2str(r)])
+                        if count>maxiter || isnan(r)
+                            error('Picard iteration did not converge')
+                        end
+                        x0 = x;
+                        count = count + 1;
+                    end
+                    xd = O.U * O.convolution_xd( O.U.' * (O.Ft - S_array) );
+                case 'freq'
+                    while r>tol
+                        S_array = SSR.evaluate_fun_over_array(O.S,x0,false);
+                        F = O.f_kappa - S_array*O.E;
+                        x_kappa = reshape(O.Qmat * F(:),O.n,[]);
+                        x = real(x_kappa*O.Einv);
+                        % convergence check
+                        r = norm(x-x0,Inf)/norm(x0,Inf);
+                        disp(['Iteration ' num2str(count) ': ' 'relative change = ' num2str(r)])
+                        if count>maxiter || isnan(r)
+                            error('Picard iteration did not converge')
+                        end
+                        x0 = x;
+                        count = count + 1;
+                    end
+                    xd = real(x_kappa*O.Evinv);
             end
-            xd = O.U * O.convolution_xd( O.U.' * (O.Ft - S_array) );
         end
         
         function [x, xd] = NewtonRaphson(O,varargin)

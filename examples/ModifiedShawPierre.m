@@ -94,8 +94,8 @@ for j = 1:n
 
 end
 %% sequential continuation
-T_range = [6 14];
-[T_array,cont_sol] = SS.sequential_continuation(T_range);
+% T_range = [6 14];
+% [T_array,cont_sol] = SS.sequential_continuation(T_range);
 
 
 %% Quasi-periodic case
@@ -103,11 +103,19 @@ SS.domain = 'freq';
 f_theta = @(theta,Omega) alpha*f0*sin(2*pi*theta); 
 SS.Omega = Omega;
 SS.f_theta = f_theta;
-SS.nh = 1;
+SS.nh = 10;
 SS.m = 50;
 
-figure;
 [x_lin_freq, xd_lin_freq] = SS.LinearResponse();
+
+figure;
 plot(2*pi*SS.theta_set/Omega,x_lin_freq) 
 hold on; plot(SS.t,x_lin); axis tight, grid on; 
+
+[x_picard_freq,xd_picard_freq] = SS.Picard('init',x_lin_freq,'tol',1e-3,'maxiter',20); % 'init', 'maxiter', 'tol' are optional arguments
+
+figure;
+plot(2*pi*SS.theta_set/Omega,x_picard_freq) 
+hold on; plot(t_picard,x_picard); axis tight, grid on; 
+
 
