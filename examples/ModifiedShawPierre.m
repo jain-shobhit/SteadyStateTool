@@ -18,9 +18,6 @@ K = k* [1 -1;
 M = [m 0;
     0 m];
 n = length(K);
-%% Nonlinearity function handle
-S = @(x)[g * x(1)^3; 0];
-DS = @(x)[3 * g * x(1)^2, 0 ; 0, 0];
 
 %% External forcing
 alpha = 1e-1;   % Loading amplitude
@@ -32,7 +29,7 @@ Df = @(t,T)-(alpha*2*pi/(T^2))*f0*(cos(2*pi*t/T).*t); % derivative of
 % w.r.t. T
 
 %% Linear response
-Omega = 0.25;       % forcing frequency
+Omega = 0.25;       % forcing frequency (rad/sec)
 T = 2*pi/Omega;     % forcing time period
 SS = SSR(M,C,K);    % Instantiating the SSR package
 SS.f = f;           % setting the forcing
@@ -41,8 +38,13 @@ SS.n_steps = 50;    % setting the number of time intervals within the time perio
 SS.order = 1;       % setting the order of integration, permissible values 
                     % are 0,1,2,3,4
 
-[x_lin, xd_lin] = SS.LinearResponse();
+[x_lin, ~] = SS.LinearResponse();
 t_lin = SS.t;
+
+%% Nonlinearity function handle
+S = @(x)[g * x(1)^3; 0];
+DS = @(x)[3 * g * x(1)^2, 0 ; 0, 0];
+
 %% Nonlinear response
 SS.S = S;           % Setting the nonlinearity
 % Nonlinear response with Picard iteration
@@ -77,7 +79,6 @@ for j = 1:n
     axis tight; grid on;legend('show')
 end
 
-
 [~, z] = ode45(@(t,z)F(t,z,T), [0 100*T], [0; 0;0;0]); % Transients
 [t, z] = ode45(@(t,z)F(t,z,T), [0 3*T], z(end,:)'); % Approximate periodic orbit
 
@@ -95,3 +96,18 @@ end
 %% sequential continuation
 T_range = [6 14];
 [T_array,cont_sol] = SS.sequential_continuation(T_range);
+
+
+%% Quasi-periodic case
+SS.domain = 'freq';
+f_theta = @(theta,Omega) alpha*f0*sin(2*pi*theta); 
+SS.Omega = Omega;
+SS.f_theta = f_theta;
+SS.nh = 1;
+SS.m = 50;
+
+figure;
+[x_lin_freq, xd_lin_freq] = SS.LinearResponse();
+plot(2*pi*SS.theta_set/Omega,x_lin_freq) 
+hold on; plot(SS.t,x_lin); axis tight, grid on; 
+

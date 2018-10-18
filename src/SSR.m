@@ -43,12 +43,13 @@ classdef SSR < handle
         theta_set       % the set of torus coordinates over which the solution is approximated used during Fourier transformation
         Qmat            % the global Q matrix containing the Green's function (amplification factors) for freq domain analysis
         f_theta         % function handle for forcing in torus coordinates
-        f_kappa         % Fourier coefficients for the external forcing 
+        f_kappa         % Fourier coefficients for the external forcing
         m               % the discretization along each dimension of the Torus
         E               % The Fourier transform exponential matrix
-        Einv            % The Fourier transform exponential matrix
+        Einv            % The inverse Fourier transform exponential matrix
+        Evinv           % The inverse Fourier transform exponential matrix
         Ekron           % The Fourier transform exponential matrix kronecker product with Identity
-        Einvkron        % The Fourier transform exponential matrix kronecker product with Identity
+        Einvkron        % The inverseFourier transform exponential matrix kronecker product with Identity
     end
     
     methods
@@ -105,7 +106,7 @@ classdef SSR < handle
                     update.kappa = false;
                     update.theta = false;
                     update.f_kappa = false;
-                    update.E    = false; 
+                    update.E    = false;
                     O.isupdated = update;
             end
         end
@@ -143,73 +144,74 @@ classdef SSR < handle
             if ~isequal(O.nh, nh)
                 O.nh = nh;
                 not_updated(O);
-            end                
+            end
         end
         
         function set.m(O,m)
             if ~isequal(O.m, m)
                 O.m = m;
                 not_updated(O);
-            end                
+            end
         end
         
         function theta = get.theta_set(O)
             if ~O.isupdated.theta
-                update_theta_set(O);                
+                update_theta_set(O);
             end
-            theta = O.kappa_set;
+            theta = O.theta_set;
         end
-            
+        
         function update_theta_set(O)
-            n_freq = length(O.Omega);            
+            n_freq = length(O.Omega);
             % check inputs
             if length(O.m) ~= n_freq
                 if length(O.m) == 1
                     mmax = repmat(O.m,n_freq,1);
                 else
                     error(['dimenionality of max. grid points number entered' ...
-                    ' does not match the dimension of base frequency. '... 
-                    'Please check input dimensions']);                
+                        ' does not match the dimension of base frequency. '...
+                        'Please check input dimensions']);
                 end
             else
                 mmax = O.m;
-            end            
+            end
             % compute kappas
             range = cell(n_freq,1);
             for j = 1:n_freq
-                range{j} = -mmax(j):mmax(j);
-            end            
-            O.theta_set = combvec(range{:});            
+                dtheta = 1/mmax(j);
+                range{j} = 0:dtheta:(1-dtheta);
+            end
+            O.theta_set = combvec(range{:});
             O.isupdated.theta = true;
         end
         
         function kappa = get.kappa_set(O)
             if ~O.isupdated.kappa
-                update_kappa_set(O);                
+                update_kappa_set(O);
             end
             kappa = O.kappa_set;
         end
-            
+        
         function update_kappa_set(O)
-            n_freq = length(O.Omega);            
+            n_freq = length(O.Omega);
             % check inputs
             if length(O.nh) ~= n_freq
                 if length(O.nh) == 1
                     nmax = repmat(O.nh,n_freq,1);
                 else
                     error(['dimenionality of number of harmonics entered' ...
-                    ' does not match the dimension of base frequency. '... 
-                    'Please check input dimensions']);                
+                        ' does not match the dimension of base frequency. '...
+                        'Please check input dimensions']);
                 end
             else
                 nmax = O.nh;
-            end            
+            end
             % compute kappas
             range = cell(n_freq,1);
             for j = 1:n_freq
                 range{j} = -nmax(j):nmax(j);
-            end            
-            O.kappa_set = combvec(range{:});            
+            end
+            O.kappa_set = combvec(range{:});
             O.isupdated.kappa = true;
         end
         
@@ -241,27 +243,31 @@ classdef SSR < handle
         
         function update_E(O)
             kappa = O.kappa_set;
-            theta = O.theta_set;           
+            theta = O.theta_set;
+            n_theta = size(theta,2);
             N = size(theta,2); % total number of elements on the torus
             thetakappa = 2i*pi*theta.'*kappa;
-            O.E = exp(-thetakappa)/N;
-            O.Ekron = kron(O.E.',speye(O.n, O.n));
-            O.Einv = exp(thetakappa.');
-            O.Einvkron = kron(O.Einv.',speye(O.n, O.n));
+            EXP = exp(-thetakappa)/N;           
+            O.E = EXP;
+            O.Ekron = kron(EXP.',speye(O.n, O.n));
+            EXPinv = exp(thetakappa.');
+            O.Einv = EXPinv;
+            O.Evinv = EXPinv.*repmat(2i*pi*(kappa.'*O.Omega.'),1,n_theta);
+            O.Einvkron = kron(EXPinv.',speye(O.n, O.n));
             O.isupdated.E = true;
         end
         
         function f_kappa = get.f_kappa(O)
-             if ~O.isupdated.f_kappa
+            if ~O.isupdated.f_kappa
                 update_f_kappa(O);
             end
-            f_kappa = O.f_kappa;            
+            f_kappa = O.f_kappa;
         end
         
-        function update_f_kappa(O)            
-            O.f_kappa = O.f_theta(O.theta_set)*O.E;
+        function update_f_kappa(O)
+            O.f_kappa = O.f_theta(O.theta_set,O.Omega)*O.E;
             O.isupdated.f_kappa = true;
-        end        
+        end
         
         function update_Lvec(O)
             t1 = -O.T:O.dt:O.T; % padding Green's function to ensure correct convolution
@@ -415,13 +421,13 @@ classdef SSR < handle
                 update_Qmat(O);
             end
             Q = O.Qmat;
-        end          
+        end
         
         function update_Qmat(O)
             kappas = O.kappa_set;
             n_kappa = size(kappas,2);
             Q_kappa = cell(n_kappa,1);
-                        
+            
             for j = 1:n_kappa
                 Q_T_kappa = zeros(O.n,1);
                 % underdamped modes
@@ -430,21 +436,21 @@ classdef SSR < handle
                 % critically damped modes
                 if ~isempty(O.c)
                     Q_T_kappa(O.c) = 1./(1i * (O.Omega*kappas(:,j)) ...
-                    - O.alpha(O.c)).^2;
+                        - O.alpha(O.c)).^2;
                 end
                 % overdamped modes
                 if ~isempty(O.o)
                     Q_T_kappa(O.o) = 1./( (O.beta(O.o) - ...
                         1i * (O.Omega*kappas(:,j))).*(O.gamma(O.o) - ...
-                    1i * (O.Omega*kappas(:,j))) );
-                end                
+                        1i * (O.Omega*kappas(:,j))) );
+                end
                 Q_kappa{j} = O.U * diag(Q_T_kappa) * O.U.';
             end
             
             O.Qmat = spblkdiag(Q_kappa{:});
             O.isupdated.Q = true;
         end
-            
+        
         function eta = convolution_x(O,phi)
             % convolution with L to obtain velocities
             eta = zeros(size(phi));
@@ -485,13 +491,20 @@ classdef SSR < handle
         end
         
         function [x,xd] = LinearResponse(O)
-            % Compute modal forcing
-            phi = O.U.' * O.Ft;
-            % Compute modal response by convolution with Green's function
-            eta = convolution_x(O,phi);
-            etad = convolution_xd(O,phi);
-            x = O.U*eta;
-            xd = O.U*etad;
+            switch O.domain
+                case 'time'
+                    % Compute modal forcing
+                    phi = O.U.' * O.Ft;
+                    % Compute modal response by convolution with Green's function
+                    eta = convolution_x(O,phi);
+                    etad = convolution_xd(O,phi);
+                    x = O.U*eta;
+                    xd = O.U*etad;
+                case 'freq'
+                    x_kappa = reshape(O.Qmat * O.f_kappa(:),O.n,[]);
+                    x = real(x_kappa*O.Einv);
+                    xd = real(x_kappa*O.Evinv);
+            end
         end
         
         function [x, xd] = Picard(O,varargin)
@@ -598,8 +611,8 @@ classdef SSR < handle
                     end
                 else
                     [x0, xd0] = NewtonRaphson(O,'init',x0);
-                end                                
-                sol{j} = [x0;xd0];                
+                end
+                sol{j} = [x0;xd0];
             end
             
         end
