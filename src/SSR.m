@@ -482,12 +482,11 @@ classdef SSR < handle
             F_P = x + O.U * O.convolution_x(O.U.'*(S_array-O.Ft));
         end
         
-        function F_Q = F_Q(O,x_kappa)
-            % function to evaluate the zero function for periodic forcing
+        function F_Q = F_Q(O,x)
+            % function to evaluate the zero function for quasiperiodic forcing
             % S - function handle to the nonlinearity
-            % f - external forcing            
-            S_array = SSR.evaluate_fun_over_array(O.S,x,false);
-            F_P = x + O.U * O.convolution_x(O.U.'*(S_array-O.Ft));
+            F = O.f_kappa - SSR.evaluate_fun_over_array(O.S,x,false) * O.E;
+            F_Q = O.Qmat*F(:) ;
         end
         
         
@@ -503,6 +502,18 @@ classdef SSR < handle
             D = spblkdiag(DSC{:});
             BU = spblkdiag(BU{:});
             DF_P = speye( O.nt * O.n ) + BU * get_ConvMtx(O) * D;
+        end
+        
+        function DF_Q = DF_Q(O,x)
+            % function to evaluate derivative of the zero function for
+            % quasiperiodic forcing, currently quite expensive
+            DSC = cell(O.nt,1);
+            N = O.n * size(O.kappa_set,2);
+            for j = 1:size(x,2)
+                DSC{j} = O.DS( x(:,j) ) ;
+            end
+            D = spblkdiag(DSC{:});
+            DF_Q = speye(N,N) + O.Qmat * O.Ekron * D * O.Einvkron;
         end
         
         function [x,xd] = LinearResponse(O)
@@ -575,24 +586,50 @@ classdef SSR < handle
             
             count = 1;
             r=1;
-            while r>tol
-                F = F_P(O,x0);      % evaluation of the zero function
-                DF = DF_P(O,x0);    % derivative of zero function
-                mu = -DF\F(:);      % correction to the solution guess
-                x = x0 + reshape(mu,size(x0));  % new solution guess
-                r = norm(x-x0,Inf)/norm(x0,Inf);
-                disp(['Iteration ' num2str(count) ': ' '||dx||/||x|| = ' num2str(r), ' residual = ' num2str(norm(F(:)))])
-                if count>maxiter || isnan(r)
-                    warning('Newton iterations did not converge')
-                    x = [];
-                    xd = [];
-                    return
-                end
-                x0 = x;
-                count = count + 1;
+            
+            switch O.domain
+                case 'time'
+                    while r>tol
+                        F = F_P(O,x0);      % evaluation of the zero function
+                        DF = DF_P(O,x0);    % derivative of zero function
+                        mu = -DF\F(:);      % correction to the solution guess
+                        x = x0 + reshape(mu,size(x0));  % new solution guess
+                        r = norm(x-x0,Inf)/norm(x0,Inf);
+                        disp(['Iteration ' num2str(count) ': ' '||dx||/||x|| = ' num2str(r), ' residual = ' num2str(norm(F(:)))])
+                        if count>maxiter || isnan(r)
+                            warning('Newton iterations did not converge')
+                            x = [];
+                            xd = [];
+                            return
+                        end
+                        x0 = x;
+                        count = count + 1;
+                    end
+                    S_array = SSR.evaluate_fun_over_array(O.S,x,false);
+                    xd = O.U * O.convolution_xd(O.U.'*(O.Ft - S_array));
+                
+                case 'freq'
+                    x_kappa0 = x0*O.E;                          % Fourier domain
+                    while r>tol
+                        F = x_kappa0(:) - F_Q(O,x0);                % evaluation of the zero function
+                        DF = DF_Q(O,x0);                            % derivative of zero function
+                        mu = -DF\F(:);                              % correction to the solution guess
+                        x_kappa = x_kappa0 + reshape(mu,O.n,[]);    % new solution guess
+                        x = real(x_kappa * O.Einv);                 % solution in time domain
+                        r = norm(x - x0,Inf)/norm(x0,Inf);
+                        disp(['Iteration ' num2str(count) ': ' '||dx||/||x|| = ' num2str(r), ' residual = ' num2str(norm(F(:)))])
+                        if count>maxiter || isnan(r)
+                            warning('Newton iterations did not converge')
+                            x = [];
+                            xd = [];
+                            return
+                        end
+                        x_kappa0 = x_kappa;
+                        x0 = x;
+                        count = count + 1;
+                    end
+                    xd = real(x_kappa*O.Evinv);
             end
-            S_array = SSR.evaluate_fun_over_array(O.S,x,false);
-            xd = O.U * O.convolution_xd(O.U.'*(O.Ft - S_array));
         end
         
         function [x0,tol,maxiter] = parse_iteration_inputs(O,inputs)

@@ -38,7 +38,7 @@ SS.n_steps = 50;    % setting the number of time intervals within the time perio
 SS.order = 1;       % setting the order of integration, permissible values 
                     % are 0,1,2,3,4
 
-[x_lin, ~] = SS.LinearResponse();
+[x_lin, xd_lin] = SS.LinearResponse();
 t_lin = SS.t;
 
 %% Nonlinearity function handle
@@ -103,7 +103,7 @@ SS.domain = 'freq';
 f_theta = @(theta,Omega) alpha*f0*sin(2*pi*theta); 
 SS.Omega = Omega;
 SS.f_theta = f_theta;
-SS.nh = 10;
+SS.nh = 1;
 SS.m = 50;
 
 [x_lin_freq, xd_lin_freq] = SS.LinearResponse();
@@ -111,11 +111,19 @@ SS.m = 50;
 figure;
 plot(2*pi*SS.theta_set/Omega,x_lin_freq) 
 hold on; plot(SS.t,x_lin); axis tight, grid on; 
+figure;
+plot(2*pi*SS.theta_set/Omega,xd_lin_freq) 
+hold on; plot(SS.t,xd_lin); axis tight, grid on; 
 
+SS.nh = 3;  % change number of harmonics to capture nonlinearity
 [x_picard_freq,xd_picard_freq] = SS.Picard('init',x_lin_freq,'tol',1e-3,'maxiter',20); % 'init', 'maxiter', 'tol' are optional arguments
 
 figure;
 plot(2*pi*SS.theta_set/Omega,x_picard_freq) 
 hold on; plot(t_picard,x_picard); axis tight, grid on; 
 
+[x_newton_freq,xd_newton_freq] = SS.NewtonRaphson(); % find out response using Picard iteration
+figure;
+plot(2*pi*SS.theta_set/Omega,x_newton_freq) 
+hold on; plot(t_newton,x_newton); axis tight, grid on; 
 
