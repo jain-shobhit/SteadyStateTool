@@ -252,7 +252,7 @@ classdef SSR < handle
             O.Ekron = kron(EXP.',speye(O.n, O.n));
             EXPinv = exp(thetakappa.');
             O.Einv = EXPinv;
-            O.Evinv = EXPinv.*repmat(2i*pi*(kappa.'*O.Omega.'),1,n_theta);
+            O.Evinv = EXPinv.*repmat(1i*(O.Omega*kappa).',1,n_theta);
             O.Einvkron = kron(EXPinv.',speye(O.n, O.n));
             O.isupdated.E = true;
         end
