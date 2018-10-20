@@ -88,8 +88,12 @@ classdef SSR < handle
             end
             if ~isequal(O.Omega, Omega)
                 O.Omega = Omega;
-                not_updated(O);
+                not_updated_Q(O);
             end
+        end
+        
+        function not_updated_Q(O)
+            O.isupdated.Q = false;
         end
         
         function not_updated(O)
