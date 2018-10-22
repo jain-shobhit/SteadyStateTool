@@ -269,7 +269,7 @@ classdef SSR < handle
         end
         
         function update_f_kappa(O)
-            O.f_kappa = O.f_theta(O.theta_set,O.Omega)*O.E;
+            O.f_kappa = O.f_theta(O.theta_set)*O.E;
             O.isupdated.f_kappa = true;
         end
         
@@ -695,7 +695,7 @@ classdef SSR < handle
             else
                 mid_freq = [];
             end
-            FREQ = sort([Omega_range, O.omega(idx).', mid_freq]);
+            FREQ = sort([Omega_range, O.omega(idx).', mid_freq.']);
             n_intervals = length(FREQ) - 1;
             SOL = cell(n_intervals*n_cont_steps + 1,1);
             OMEGA = zeros(n_intervals*n_cont_steps + 1,1);
@@ -728,16 +728,16 @@ classdef SSR < handle
                     end
                     if try_Picard
                         try
-                            [x0, ~] = Picard(O,'init',x0);
+                            [x0, xd0] = Picard(O,'init',x0);
                         catch
                             disp('Switching to Newton--Raphson iteration')
                             try_Picard = false;
-                            [x0, ~] = NewtonRaphson(O,'init',x0);
+                            [x0, xd0] = NewtonRaphson(O,'init',x0);
                         end
                     else
-                        [x0, ~] = NewtonRaphson(O,'init',x0);
+                        [x0, xd0] = NewtonRaphson(O,'init',x0);
                     end
-                    sol{k} = x0;
+                    sol{k} = [x0;xd0];
                     pic(k) = try_Picard;
                 end
                 if mod(j,2)
