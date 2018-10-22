@@ -20,13 +20,10 @@ M = [m 0;
 n = length(K);
 
 %% External forcing
-alpha = 1e-1;   % Loading amplitude
+alpha = 2e-2;   % Loading amplitude
 f0 = [1;1];     % loading shape
 f = @(t,T)alpha*f0*sin(2*pi*t/T); % loading function handle (also takes
 % loading time period T as argument)
-Df = @(t,T)-(alpha*2*pi/(T^2))*f0*(cos(2*pi*t/T).*t); % derivative of
-% loading function
-% w.r.t. T
 
 %% Linear response
 Omega = 0.25;       % forcing frequency (rad/sec)
@@ -34,9 +31,9 @@ T = 2*pi/Omega;     % forcing time period
 SS = SSR(M,C,K);    % Instantiating the SSR package
 SS.f = f;           % setting the forcing
 SS.T = T;           % setting the time period at which periodic loading is applied
-SS.n_steps = 50;    % setting the number of time intervals within the time period
-SS.order = 1;       % setting the order of integration, permissible values 
-                    % are 0,1,2,3,4
+SS.n_steps = 100;    % setting the number of time intervals within the time period
+SS.order = 1;       % setting the order of integration, permissible values
+% are 0,1,2,3,4
 
 [x_lin, xd_lin] = SS.LinearResponse();
 t_lin = SS.t;
@@ -79,7 +76,7 @@ for j = 1:n
     axis tight; grid on;legend('show')
 end
 
-[~, z] = ode45(@(t,z)F(t,z,T), [0 100*T], [0; 0;0;0]); % Transients
+[~, z] = ode45(@(t,z)F(t,z,T), [0 100*T], zeros(2*n,1)); % Transients
 [t, z] = ode45(@(t,z)F(t,z,T), [0 3*T], z(end,:)'); % Approximate periodic orbit
 
 % plots
@@ -91,39 +88,50 @@ for j = 1:n
     plot(T+t_newton, x_newton(j,:), 'DisplayName', 'Newton');
     xlabel('$$t$$'); ylabel(['$$x_' num2str(j) '$$'])
     axis tight; grid on; legend('show')
-
+    
 end
+
 %% sequential continuation
-% T_range = [6 14];
-% [T_array,cont_sol] = SS.sequential_continuation(T_range);
-
-
-%% Quasi-periodic case
-SS.domain = 'freq';
-f_theta = @(theta,Omega) alpha*f0*sin(2*pi*theta); 
-SS.Omega = Omega;
-SS.f_theta = f_theta;
-SS.nh = 1;
-SS.m = 50;
-
-[x_lin_freq, xd_lin_freq] = SS.LinearResponse();
-
+T_range = [6 21];
+[Omega_array,cont_sol,~] = SS.sequential_continuation(T_range,'ncontsteps',100);
+% compute norm of the solution
+N = nan(length(Omega_array),1);
+for j = 1:length(Omega_array)
+    if ~isempty(cont_sol{j})
+        N(j) = SS.dt*norm(cont_sol{j},'fro');
+    end
+end
+figure; semilogy(Omega_array,N,'-b');axis tight; grid on;
+xlabel('$$\Omega$$ [rad/s]'); ylabel('$$||\mathbf{x}||_2$$')
+%% Ampltude variation
+alpha_array = [0.01 0.02 0.04 0.08]; % Amplitude array
 figure;
-plot(2*pi*SS.theta_set/Omega,x_lin_freq) 
-hold on; plot(SS.t,x_lin); axis tight, grid on; 
-figure;
-plot(2*pi*SS.theta_set/Omega,xd_lin_freq) 
-hold on; plot(SS.t,xd_lin); axis tight, grid on; 
+for k = 1:length(alpha_array)
+    f = @(t,T)alpha_array(k)*f0*sin(2*pi*t/T); % loading function handle
+    SS.f = f;
+    [Omega_array,cont_sol,picard_flag] = SS.sequential_continuation(T_range,'ncontsteps',100);
+    N = nan(length(Omega_array),1);
+    for j = 1:length(Omega_array)
+        if ~isempty(cont_sol{j})
+            N(j) = SS.dt*norm(cont_sol{j},'fro');
+        end
+    end
+    % plot Picard and Newton solutions in different color
+    picard_idx = find(picard_flag);
+    newton_idx = find(~picard_flag);
+    N_picard = N;
+    N_picard(newton_idx)=nan;    
+    semilogy(Omega_array,N_picard,'-b','DisplayName','Picard');
+    text(Omega_array(1),0.9*N(1),['$$A=$$' num2str(alpha_array(k))])
+    hold on; 
+    if ~isempty(newton_idx)
+        newton_idx = [newton_idx(1)-1; newton_idx; newton_idx(end)+1];
+        semilogy(Omega_array(newton_idx),N(newton_idx),'-r','DisplayName', 'Newton-Raphson');
+    end
+end
+axis tight; grid on;
+figure; semilogy(Omega_array,N,'-b');
+xlabel('$$\Omega$$ [rad/s]'); ylabel('$$||\mathbf{x}||_2$$')
 
-SS.nh = 3;  % change number of harmonics to capture nonlinearity
-[x_picard_freq,xd_picard_freq] = SS.Picard('init',x_lin_freq,'tol',1e-3,'maxiter',20); % 'init', 'maxiter', 'tol' are optional arguments
 
-figure;
-plot(2*pi*SS.theta_set/Omega,x_picard_freq) 
-hold on; plot(t_picard,x_picard); axis tight, grid on; 
-
-[x_newton_freq,xd_newton_freq] = SS.NewtonRaphson(); % find out response using Picard iteration
-figure;
-plot(2*pi*SS.theta_set/Omega,x_newton_freq) 
-hold on; plot(t_newton,x_newton); axis tight, grid on; 
-
+%%
