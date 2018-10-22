@@ -103,6 +103,7 @@ for j = 1:length(Omega_array)
 end
 figure; semilogy(Omega_array,N,'-b');axis tight; grid on;
 xlabel('$$\Omega$$ [rad/s]'); ylabel('$$||\mathbf{x}||_2$$')
+
 %% Ampltude variation
 alpha_array = [0.01 0.02 0.04 0.08]; % Amplitude array
 figure;
@@ -133,5 +134,36 @@ axis tight; grid on;
 figure; semilogy(Omega_array,N,'-b');
 xlabel('$$\Omega$$ [rad/s]'); ylabel('$$||\mathbf{x}||_2$$')
 
+%% nonsmooth oscillation
+alp = 1; bet = 1;
+S = @(x)[nonsmooth_nonlinearity(x(1),alp,bet); 0];
+DS = @(x)[nonsmooth_nonlinearity_derv(x(1),alp,bet), 0 ; 0, 0];
 
-%%
+SS.S = S;           
+SS.DS = DS;
+
+% Nonlinear response with Picard iteration
+[x_picard,xd_picard] = SS.Picard(); % 'init', 'maxiter', 'tol' are optional arguments
+t_picard = SS.t;
+% hold on; plot(SS.t, x_picard, 'DisplayName', 'Picard');
+
+% Nonlinear response with Newton--Raphson iteration
+SS.DS = DS;         % Setting the derivative
+[x_newton,xd_newton] = SS.NewtonRaphson(); % find out response using Picard iteration
+t_newton = SS.t;
+% hold on; plot(SS.t, x_newton, 'DisplayName', 'Newton');
+
+% sequential continuation
+T_range = [6 21];
+[Omega_array,cont_sol,~] = SS.sequential_continuation(T_range,'ncontsteps',100);
+% compute norm of the solution
+N = nan(length(Omega_array),1);
+for j = 1:length(Omega_array)
+    if ~isempty(cont_sol{j})
+        N(j) = SS.dt*norm(cont_sol{j},'fro');
+    end
+end
+figure; semilogy(Omega_array,N,'-b');axis tight; grid on;
+xlabel('$$\Omega$$ [rad/s]'); ylabel('$$||\mathbf{x}||_2$$')
+
+
