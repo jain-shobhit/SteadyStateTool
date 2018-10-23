@@ -27,7 +27,7 @@ alpha = 0.01;   % Loading amplitude
 f =  @(t,Omega) alpha*[1; 1]*sin(Omega*t);
 f_theta = @(theta) alpha*[1; 1]*sin(2*pi*theta); 
 
-%% Linear, periodic
+%% Linear, periodic forcing
 Omega = 0.1; % single frequency
 SS.Omega = Omega;
 SS.f_theta = f_theta;
@@ -53,7 +53,7 @@ plot(t,z_lin(:,1:2),'DisplayName','ode45')
 hold on;plot(2*pi*SS.theta_set/Omega,x_lin_freq, 'Displayname', 'Integral Eq.' ) 
 grid on; axis tight
 
-%% quasi-periodic, nonlinear
+%% Nonlinear, Quasi-periodic forcing 
 S = @(x)[g * x(1)^3; 0];
 DS = @(x)[3 * g * x(1)^2, 0 ; 0, 0];
 SS.S = S;           % Setting the nonlinearity
