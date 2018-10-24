@@ -7,3 +7,4 @@ S. Jain, T. Breunung, G. Haller, Fast Computation of Steady-State Response
 for Nonlinear Vibrations of High-Degree-of-Freedom Systems, 
 submitted for publication (2018).
 
+Please add the folder and its contents to MATLAB path before playing with examples.
