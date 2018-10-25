@@ -7,8 +7,8 @@ function [x, xd] = NewtonRaphson(O,varargin)
 count = 1;
 r=1;
 
-switch O.domain
-    case 'time'
+switch O.type
+    case 'p'
         while r>tol
             F = F_P(O,x0);      % evaluation of the zero function
             DF = DF_P(O,x0);    % derivative of zero function
@@ -28,7 +28,7 @@ switch O.domain
         S_array = SSR.evaluate_fun_over_array(O.S,x,false);
         xd = O.U * O.convolution_xd(O.U.'*(O.Ft - S_array));
         
-    case 'freq'
+    case 'qp'
         x_kappa0 = x0*O.E;                          % Fourier domain
         while r>tol
             F = x_kappa0(:) - F_Q(O,x0);                % evaluation of the zero function

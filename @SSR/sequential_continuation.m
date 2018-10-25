@@ -27,10 +27,10 @@ n_cont_steps = p.Results.ncontsteps;
 if ~isrow(range)
     range = range.';
 end
-switch O.domain
-    case 'time'
+switch O.type
+    case 'p'
         Omega_range = 2*pi./range;
-    case 'freq'
+    case 'qp'
         Omega_range = range;
 end
 % check which eigenfrequencies are in this range
@@ -63,10 +63,10 @@ for j = 1:n_intervals
     pic = zeros(1,n_Omega);
     try_Picard = true;
     for k = 1:n_Omega
-        switch O.domain
-            case 'time'
+        switch O.type
+            case 'p'
                 O.T = 2*pi./Omega_array(k);
-            case 'freq'
+            case 'qp'
                 Omega0(paramidx) = Omega_array(k);
                 O.Omega = Omega0;
         end

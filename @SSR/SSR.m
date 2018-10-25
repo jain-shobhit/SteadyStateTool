@@ -15,7 +15,8 @@ classdef SSR < handle
         Df              % function handle for derivative of the forcing w.r.t time period T
         order = 1       % order if integration: Newton Cotes is used (existing steps are refined)
         n_steps = 50    % number of intervals in the time domain: 50 by default
-        domain = 'time' % calculations performed in time domain or frequency domain
+        type = 'p'      % 'p': calculations performed for periodic solution (time domain)
+                        % 'qp' : calculations performed for periodic solution (time domain)
         %     end
         %
         %     properties (Access = private)

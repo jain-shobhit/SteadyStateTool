@@ -20,7 +20,7 @@ M = [m 0;
 n = length(K);
 
 SS = SSR(M,C,K);    % Instantiating the SSR package
-SS.domain = 'freq';
+SS.type = 'qp';     % Solve for quasiperiodic response (i.e. Fourier domain)
 
 %% External forcing
 alpha = 0.01;   % Loading amplitude

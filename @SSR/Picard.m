@@ -6,8 +6,8 @@ function [x, xd] = Picard(O,varargin)
 %% Initialization
 count = 1;
 r = 1;
-switch O.domain
-    case 'time'
+switch O.type
+    case 'p'
         %% Iteration
         while r>tol
             % Evaluate the map G_P
@@ -24,7 +24,7 @@ switch O.domain
             count = count + 1;
         end
         xd = O.U * O.convolution_xd( O.U.' * (O.Ft - S_array) );
-    case 'freq'
+    case 'qp'
         while r>tol
             S_array = SSR.evaluate_fun_over_array(O.S,x0,false);
             F = O.f_kappa - S_array*O.E;
