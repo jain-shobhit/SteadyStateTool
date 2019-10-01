@@ -10,7 +10,7 @@ Nonlinear Dyn (2019) 97: 313. https://doi.org/10.1007/s11071-019-04971-1
 
 Please cite the above-mentioned article, if you use SteadyStateTool in your work.
 
-#Installation
+# Installation
 Upon downloading and extracting the files, please set the CURRENT FOLDER in MATLAB by browsing to the folder containing startup.m file. 
 Thereafter, please run the startup.m file or simple type "startup" in the MATLAB COMMAND WINDOW. 
 You are now ready to play with examples and create new ones!
