@@ -7,7 +7,12 @@ for j = 1:O.nt
     DSC{j} = O.U.' * O.DS( x(:,j) ) ;
     BU{j} = O.U;
 end
-D = spblkdiag(DSC{:});
-BU = spblkdiag(BU{:});
+if verLessThan('matlab','9.7.0')
+    D = spblkdiag(DSC{:});
+    BU = spblkdiag(BU{:});
+else
+    D = blkdiag(DSC{:});
+    BU = blkdiag(BU{:});
+end 
 DF_P = speye( O.nt * O.n ) + BU * get_ConvMtx(O) * D;
 end

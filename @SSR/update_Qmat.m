@@ -28,6 +28,12 @@ for j = 1:n_kappa
     Q = Q_T_kappa(:,j);
     Q_kappa{j} = O.U * diag(Q) * O.U.';
 end
-O.Qmat = spblkdiag(Q_kappa{:});
+
+if verLessThan('matlab','9.7.0')
+    O.Qmat = spblkdiag(Q_kappa{:});
+else
+    O.Qmat = blkdiag(Q_kappa{:});
+end 
+
 O.isupdated.Q = true;
 end

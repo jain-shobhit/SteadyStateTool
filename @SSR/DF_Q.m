@@ -6,6 +6,11 @@ N = O.n * size(O.kappa_set,2);
 for j = 1:size(x,2)
     DSC{j} = O.DS( x(:,j) ) ;
 end
-D = spblkdiag(DSC{:});
+if verLessThan('matlab','9.7.0')
+    D = spblkdiag(DSC{:});
+else
+    D = blkdiag(DSC{:});
+end 
+
 DF_Q = speye(N,N) + O.Qmat * O.Ekron * D * O.Einvkron;
 end
