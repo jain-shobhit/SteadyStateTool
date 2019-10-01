@@ -3,6 +3,7 @@
 *.mat
 *.fig
 *.eps
+*.MATLABDriveTag
 diary
 
 
