@@ -34,7 +34,7 @@ end
 % overdamped
 if ~isempty(O.o)
     ho = repmat(SSR.h(t),size(O.omega(O.o)));
-    beta_min_gamma = repmat(O.beta(O.o) - O.beta(O.o),size(t));
+    beta_min_gamma = repmat(O.beta(O.o) - O.gamma(O.o),size(t));
     bet = repmat(O.beta(O.o),size(t));
     gam = repmat(O.gamma(O.o),size(t));
     exp_beta_t_T = exp(O.beta(O.o) * (t + T));

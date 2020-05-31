@@ -69,11 +69,12 @@ classdef SSR < handle
             O.o = find(zeta>1);
             O.c = find(zeta==1);
             O.u = find(zeta<1);
+            lambda1 = (-zeta + sqrt(zeta.^2 - 1)).* O.omega0;
             lambda2 = (-zeta - sqrt(zeta.^2 - 1)).* O.omega0;
             O.alpha = real(lambda2);
             O.omega = abs(imag(lambda2));
-            O.beta = O.alpha + O.omega;
-            O.gamma = O.alpha - O.omega;
+            O.beta = lambda1;
+            O.gamma = lambda2;
         end
         
         function set.T(O,T)
