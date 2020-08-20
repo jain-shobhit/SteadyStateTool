@@ -1,4 +1,5 @@
 # SteadyStateTool: Fast computation of Steady-State response of multi-degree of freedom nonlinear mechanical systems
+[![DOI](https://zenodo.org/badge/151435739.svg)](https://zenodo.org/badge/latestdoi/151435739)
 
 This program computes the steady-state response (SSR) of 
 multi-degree-of-freedom nonlinear mechanical systems under multi-frequency
