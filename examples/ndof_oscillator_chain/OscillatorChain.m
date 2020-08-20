@@ -11,7 +11,6 @@ c = 1;
 g = 0.5;
 
 temp = spdiags(ones(n,1)*[-1 2 -1], [-1 0 1], sparse(n,n));
-temp(1,1) = 1;
 
 C = c * temp;
 K = k * temp;
