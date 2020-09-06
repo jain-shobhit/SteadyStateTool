@@ -35,6 +35,8 @@ classdef SSR < handle
         DLvec           % Derivative dLdT
         Jvec            % Green's function for velocities (calculated over -T:dt:T)
         ConvMtx         % convolution matrix for displacements
+        A               % reformulated convolution matrix
+        Lint            % precomputed integrals of Green's functions
         isupdated       % check if different quantitities are updated according to T
         weights         % Weights vector for higher order integration
         nt              % number of nodes in the time mesh
@@ -51,30 +53,79 @@ classdef SSR < handle
         Evinv           % The inverse Fourier transform exponential matrix
         Ekron           % The Fourier transform exponential matrix kronecker product with Identity
         Einvkron        % The inverseFourier transform exponential matrix kronecker product with Identity
+        mode_choice     % Selection of modes specified by the user
+        
+        % required only for the SSM computation in the mode selection
+        % procedure
+        zeta            % The damping coefficients of the master modes
+        omega2          % The eigenfrequencies of the enslaved modes
+        zeta2           % The damping coefficients of the enslaved modes
+        K1              % Stiffness matrix of the enslaved modes (in modal coordinates)
+        C1              % Damping matrix of the enslaved modes (in modal coordinates)
+        U2              % Enslaved eigenmodes
+        % storage for some of these
+        U2store
+        zeta2store
+        omega2store
+        SSMdone         % Boolean that ensures that the eigenvalues are only computed once
     end
     
     methods
-        function O = SSR(M,C,K)
+        function O = SSR(M,C,K,varargin)
             % Basic system properties
             O.M = M;
             O.C = C;
-            O.K = K;
-            O.n = length(M);
+            O.K = K;            
+            if nargin == 3
+                n = length(M);
+                O.mode_choice = 1:n;
+            else
+                O.mode_choice = varargin{1};
+            end            
+            O.n = length(O.mode_choice);
             
-            [V, ~] = eig(full(K),full(M));
+            [VV, dd] = eigs(full(K),full(M),max(O.mode_choice),'SM');
+            dd = diag(dd);
+            [~, ind] = sort(dd);
+            VV = VV(:,ind);
+            V = VV(:,O.mode_choice);
             mu = diag(V.' * M * V);
             O.U = V * diag( 1./ sqrt(mu) ); % mass normalized VMs
             O.omega0 = sqrt(diag((O.U.' * K * O.U)));
-            zeta = diag((O.U.' * C * O.U))./ (2*O.omega0);
-            O.o = find(zeta>1);
-            O.c = find(zeta==1);
-            O.u = find(zeta<1);
-            lambda1 = (-zeta + sqrt(zeta.^2 - 1)).* O.omega0;
-            lambda2 = (-zeta - sqrt(zeta.^2 - 1)).* O.omega0;
+            O.K1 = O.U.' * K * O.U;
+            O.zeta = diag((O.U.' * C * O.U))./ (2*O.omega0);
+            O.C1 = O.U.' * C * O.U;
+            O.o = find(O.zeta>1);
+            O.c = find(O.zeta==1);
+            O.u = find(O.zeta<1);
+            lambda1 = (-O.zeta + sqrt(O.zeta.^2 - 1)).* O.omega0;
+            lambda2 = (-O.zeta - sqrt(O.zeta.^2 - 1)).* O.omega0;
             O.alpha = real(lambda2);
             O.omega = abs(imag(lambda2));
             O.beta = lambda1;
             O.gamma = lambda2;
+            O.SSMdone = 0;
+        end  
+        
+        function U2 = get.U2(O)
+            if ~O.SSMdone
+                SSMcomps(O);
+            end
+            U2 = O.U2store;
+        end
+        
+        function omega2 = get.omega2(O)
+            if ~O.SSMdone
+                SSMcomps(O);
+            end
+            omega2 = O.omega2store;
+        end
+        
+        function zeta2 = get.zeta2(O)
+            if ~O.SSMdone
+                SSMcomps(O);   
+            end
+            zeta2 = O.zeta2store;
         end
         
         function set.T(O,T)
@@ -189,13 +240,23 @@ classdef SSR < handle
             end
         end
         
+        
+        
         update_Jvec(O)
         
         J = J(O,t,T)
         
         CM = get_ConvMtx(O)
         
+        A = get_A(O)
+        
+        Lint = get_Lint(O)
+        
         update_ConvMtx(O)
+        
+        update_A(O)
+        
+        update_Lint(O)
         
         update_dLvec(O)
         
@@ -218,13 +279,17 @@ classdef SSR < handle
         
         F_P = F_P(O,x)
         
+        F_P = F_P2(O,x)
+        
         F_Q = F_Q(O,x)
         
         DF_P = DF_P(O,x)
         
+        DF_P = DF_P2(O,x)
+        
         DF_Q = DF_Q(O,x)
         
-        [x,xd] = LinearResponse(O)
+        [x,xd,eta] = LinearResponse(O)
         
         [x, xd] = Picard(O,varargin)
         
@@ -232,7 +297,29 @@ classdef SSR < handle
         
         [x0,tol,maxiter] = parse_iteration_inputs(O,inputs)
         
+        [x0,eta0,tol,maxiter] = parse_iteration_inputs_ref(O,inputs)
+        
         [OMEGA, SOL, PICARD] = sequential_continuation(O,range,varargin)
+        
+        [OMEGA, SOL, PICARD] = sequential_continuation_reformulated(O,range,varargin)
+        
+        A_zeta = Ax(O,x0)
+          
+        [y, yd, z0] = Picard_reformulated(O,varargin)
+        
+        [F_P,Tz] = F_P_reformulated(O,eta0,z)
+        
+        DF_P = DF_P_reformulated(O,UTz)
+
+        [y, yd, z0] = NewtonRaphson_reformulated(O,varargin)
+        
+        W = SSM(O,S)
+        
+        W = SSM2(O,S)
+        
+        [U2,omega2,zeta2] = SSMcomps(O)
+        
+        [om, N] = FRC(O,T_range,ncontsteps)
     end
     
     methods(Static)
