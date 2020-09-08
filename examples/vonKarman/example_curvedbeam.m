@@ -1,15 +1,31 @@
+%% Mode Selection on Von Karman curved Beam Example
+% This example is described in Section 6.2 (Figure 8) of the following 
+% article. 
+% G. Buza, S. Jain, G. Haller, Using Spectral Submanifolds for Optimal 
+% Mode Selection in Model Reduction, (2020) Preprint available on arXiv.org
+
+% The finite element model is taken from the following article. 
+% Jain, S., Tiso, P., & Haller, G. (2018). Exact nonlinear model reduction 
+% for a von Kármán beam: slow-fast decomposition and spectral submanifolds. 
+% Journal of Sound and Vibration, 423, 195–211. 
+% https://doi.org/10.1016/J.JSV.2018.01.049
+
 clear 
 clc
 close all
 
-%% Von Karman Beam example
-epsilon = 7e-3; % h/L 7e-3 1e-3
-midp_height = 0.005; %0.005 height of midpoint relative to the ends (measure of curvature of the beam)
+%% parameters
+epsilon = 7e-3; % beam thickness-to-length ratio 
+midp_height = 0.005; % height of midpoint relative to the ends (measure of curvature of the beam)
 [Geo] = Geometry(epsilon,midp_height);
+
 nElements = 10;
-BC = 'B'; % simply supported
-[Misc,model] = Beam_Model(Geo,nElements,BC);
-n = length(model.freeDOFs);
+BC = 'B'; % boundary condition: simply supported
+
+%% build finite element model
+[Misc,model] = Beam_Model(Geo,nElements,BC); 
+
+n = length(model.freeDOFs); % total number of degrees of freedom
 
 %% Mass Matrix
 M = model.M(model.freeDOFs,model.freeDOFs);

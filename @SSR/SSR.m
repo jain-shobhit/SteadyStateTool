@@ -1,6 +1,15 @@
 classdef SSR < handle
-    %SSR Summary of this class goes here
-    %   Detailed explanation goes here
+    %SSR (SteadyStateResponse) class implements the integral equations
+    %approach to the computation of the steady-state response in
+    %(quasi)periodically-forced dynamical systems.
+    
+    % The theory of computation (without model reduction) is decribed in
+    % the following article:
+    %
+    
+    % The theory for model reduction is described in the following article:
+    % G. Buza, S. Jain, G. Haller, Using Spectral Submanifolds for Optimal
+    % Mode Selection in Model Reduction, (2020) Preprint available on arXiv.org
     
     properties
         M               % Mass matrix

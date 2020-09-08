@@ -1,5 +1,9 @@
 function modes = modeselect(full,param,X) 
-% automated nonlinear mode selection procedure
+%% Automated nonlinear mode selection procedure: described in Algorithm 1 of
+% the following article 
+% G. Buza, S. Jain, G. Haller, Using Spectral Submanifolds for Optimal 
+% Mode Selection in Model Reduction, (2020) Preprint available on arXiv.org
+
 
 try
     modes = param.initialmodes; 

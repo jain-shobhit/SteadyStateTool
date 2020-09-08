@@ -1,4 +1,10 @@
 %% Oscillator chain with coupled nonlinearities
+% This example is described in Section 4.2 (Figure 6) of the following 
+% article 
+% S. Jain, T. Breunung, G. Haller, Fast Computation of Steady-State 
+% Response for Nonlinear Vibrations of High-Degree-of-Freedom Systems, 
+% Nonlinear Dyn (2019) 97: 313. https://doi.org/10.1007/s11071-019-04971-1
+
 clear all
 clc
 

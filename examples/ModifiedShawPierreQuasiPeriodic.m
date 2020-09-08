@@ -2,6 +2,13 @@
 % m*x1dd + k(x1-x2) + c(x1d-x2d) + g*x1^3 = f1(t)
 % m*x2dd + k(2*x2-x1) + c(2*x2d - x1d) = f2(t)
 
+% This example is described in Section 4.1.2 (Figure 4) of the following 
+% article 
+% S. Jain, T. Breunung, G. Haller, Fast Computation of Steady-State 
+% Response for Nonlinear Vibrations of High-Degree-of-Freedom Systems, 
+% Nonlinear Dyn (2019) 97: 313. https://doi.org/10.1007/s11071-019-04971-1
+
+
 clear all
 clc; close all
 

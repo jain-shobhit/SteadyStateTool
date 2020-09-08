@@ -1,8 +1,15 @@
+%% Mass-spring motivational example for mode selection
+
+% This example is described in Section 4.3 (Figure 2) of the following 
+% article 
+% G. Buza, S. Jain, G. Haller, Using Spectral Submanifolds for Optimal 
+% Mode Selection in Model Reduction, (2020) Preprint available on arXiv.org
+
 clear 
 clc
 close all
 
-%% Mass-spring example
+%% properties
 M = eye(3);
 D1 = 0.01;
 D2 = 0.02;
@@ -28,20 +35,20 @@ SS = SSR(M,C,K,1);
 
 % SSM computation
 R = cell(1,2);
-R{1} = [ome2^2/2];
-R{2} = [ome3^2/2];
+R{1} = ome2^2/2;
+R{2} = ome3^2/2;
 W = SS.SSM2(R);
 disp(['norm(W_2)=' num2str(norm(W{1})) ', norm(W_3)=' num2str(norm(W{2}))])
 [~, ind] = max([norm(W{1}) norm(W{2})]);
 
 % master mode sets considered
-modesel1 = [1 2]; 
-modesel2 = [1 ind+1];
+I_1 = [1 2];        % mode selection 1
+I_2 = [1 ind+1];    % mode selection 2
 
 %% SSR Package
 SSfull = SSR(M,C,K,[1 2 3]);   % full system
-SSred1 = SSR(M,C,K,modesel1);     % reduced to I_1
-SSred2 = SSR(M,C,K,modesel2);     % reduced to I_2
+SSred1 = SSR(M,C,K,I_1);     % reduced to I_1
+SSred2 = SSR(M,C,K,I_2);     % reduced to I_2
 SSfull.S = S;
 SSfull.DS = DS; 
 SSfull.f = f;
