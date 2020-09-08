@@ -1,44 +1,48 @@
 function modes = modeselect(full,param,X) 
 % automated nonlinear mode selection procedure
 
-% initial set based on spectral quotient analysis
-realpart = min(abs(real(-full.zeta.*full.omega0 + sqrt(full.zeta.^2-1).*full.omega0)),...
-    abs(real(-full.zeta.*full.omega0 - sqrt(full.zeta.^2-1).*full.omega0)));
-[rpsorted,ind] = sort(realpart);
-ratio = zeros(1,length(rpsorted)-1);
-for i = 1:length(rpsorted)-1
-    ratio(i) = rpsorted(i+1)/rpsorted(i);
-end
-cut = param.nmodes;
-while cut > ceil(param.nmodes/3)    % limit the number of modes selected via s.q.a.
-    [~,cut] = max(ratio);
-    if cut ~= 1
-    ratio = ratio(1:cut-1);
+try
+    modes = param.initialmodes; 
+catch    
+    % initial set based on spectral quotient analysis
+    realpart = min(abs(real(-full.zeta.*full.omega0 + sqrt(full.zeta.^2-1).*full.omega0)),...
+        abs(real(-full.zeta.*full.omega0 - sqrt(full.zeta.^2-1).*full.omega0)));
+    [rpsorted,ind] = sort(realpart);
+    ratio = zeros(1,length(rpsorted)-1);
+    for i = 1:length(rpsorted)-1
+        ratio(i) = rpsorted(i+1)/rpsorted(i);
     end
-end
-modes = ind(1:cut).';
-
-% refinement based on linear response to forcing (if given)
-if ~isempty(full.f)
-    [x_linf,~] = full.LinearResponse();
-    z = full.U.' * full.M * x_linf;
-    b = size(z);
-    NORM = zeros(1,b(1));
-    for j = 1:b(1)
-        NORM(j) = norm(z(j,:));
-    end
-    while length(modes) < ceil(param.nmodes*2/3)    % limit the number of modes selected via linear response   
-        if sum(NORM(modes)) > 0.9*sum(NORM)
-            break
+    cut = param.nmodes;
+    while cut > ceil(param.nmodes/3)    % limit the number of modes selected via s.q.a.
+        [~,cut] = max(ratio);
+        if cut ~= 1
+        ratio = ratio(1:cut-1);
         end
-        modesC = setdiff(1:full.n,modes);
-        [~,ind2] = max(NORM(modesC));
-        modes = [modes ind2];
     end
-    percent = 100*sum(NORM(modes))/sum(NORM);
-    disp(['The initial mode selection recovers ' num2str(percent) '% of the linear response.'])
-else
-    disp('Since no forcing was provided for the SSR class, it is not guaranteed that the mode selection recovers the linear response.')
+    modes = ind(1:cut).';
+
+    % refinement based on linear response to forcing (if given)
+    if ~isempty(full.f)
+        [x_linf,~] = full.LinearResponse();
+        z = full.U.' * full.M * x_linf;
+        b = size(z);
+        NORM = zeros(1,b(1));
+        for j = 1:b(1)
+            NORM(j) = norm(z(j,:));
+        end
+        while length(modes) < ceil(param.nmodes*2/3)    % limit the number of modes selected via linear response   
+            if sum(NORM(modes)) > 0.9*sum(NORM)
+                break
+            end
+            modesC = setdiff(1:full.n,modes);
+            [~,ind2] = max(NORM(modesC));
+            modes = [modes ind2];
+        end
+        percent = 100*sum(NORM(modes))/sum(NORM);
+        disp(['The initial mode selection recovers ' num2str(percent) '% of the linear response.'])
+    else
+        disp('Since no forcing was provided for the SSR class, it is not guaranteed that the mode selection recovers the linear response.')
+    end
 end
 disp('Initial linear selection:')
 disp(modes)

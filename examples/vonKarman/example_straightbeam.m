@@ -9,11 +9,6 @@ midp_height = 0; %0.005 height of midpoint relative to the ends (measure of curv
 nElements = 10;
 BC = 'B'; % simply supported
 [Misc,model] = Beam_Model(Geo,nElements,BC);
-
-% master mode sets considered
-modesel1 = 1:10; 
-modesel2 = [1:5 21:22];
-
 n = length(model.freeDOFs);
 plot_dof = 9;
 
@@ -27,10 +22,28 @@ K = model.K(model.freeDOFs,model.freeDOFs);
 C = model.C(model.freeDOFs,model.freeDOFs);
 
 %% Steady-State tool
-SSS = SSR(M,C,K,1:n);
-SS1 = SSR(M,C,K,modesel1);   
-SS2 = SSR(M,C,K,modesel2);    
+SSS = SSR(M,C,K,1:n);   % full system
 
+%% Mode selection
+
+% Input parameters for mode selection
+param.curvtolerance = 0.05;
+param.nmodes = 10;
+param.type = 0; % set to 0 if param.nmodes is the max number of modes,
+% set to 1 if param.nmodes is the desired number of modes
+param.example = 'simple'; % always use simple if enough memory is available to store X below
+param.initialmodes = [1 2 3 4 5]; % optional input modes
+X = S11(model); % this conains the quadratic nonlinearities for all dofs (X_i).
+% X_i is symmetric, and can be found from the form M\ddot{q} + C\dot{q} +
+% Kq +\Gamma(q) = F(t) (i denotes the specific row of this equation)
+
+% master mode sets considered
+modesel1 = 1:10; 
+modesel2 = modeselect(SSS,param,X);
+SS1 = SSR(M,C,K,modesel1);  % reduced to I_1   
+SS2 = SSR(M,C,K,modesel2);  % reduced to I_2
+
+%% Incrementing amplitude
 T = 2*pi/26;
 A = [10:5:35 40:4:172 174 176:1:200 200:1:230]* 10^(-2); % amplitude vector
 SSS.S = @(x) NonlinearityVK(model,x);
@@ -80,7 +93,7 @@ for j = 1:length(A)
     disp(vpa(A(j)))
 end
 
-figure(2);
+figure(3);
 
 %% final amplitude time history
 plot(SSS.t, xf(plot_dof,:), 'k', 'DisplayName', 'Full','linewidth',1);

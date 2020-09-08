@@ -239,24 +239,14 @@ classdef SSR < handle
                 Jvec = O.Jvec;
             end
         end
-        
-        
-        
+               
         update_Jvec(O)
         
         J = J(O,t,T)
         
         CM = get_ConvMtx(O)
         
-        A = get_A(O)
-        
-        Lint = get_Lint(O)
-        
         update_ConvMtx(O)
-        
-        update_A(O)
-        
-        update_Lint(O)
         
         update_dLvec(O)
         
@@ -279,17 +269,13 @@ classdef SSR < handle
         
         F_P = F_P(O,x)
         
-        F_P = F_P2(O,x)
-        
         F_Q = F_Q(O,x)
         
         DF_P = DF_P(O,x)
         
-        DF_P = DF_P2(O,x)
-        
         DF_Q = DF_Q(O,x)
         
-        [x,xd,eta] = LinearResponse(O)
+        [x, xd] = LinearResponse(O)
         
         [x, xd] = Picard(O,varargin)
         
@@ -297,24 +283,8 @@ classdef SSR < handle
         
         [x0,tol,maxiter] = parse_iteration_inputs(O,inputs)
         
-        [x0,eta0,tol,maxiter] = parse_iteration_inputs_ref(O,inputs)
-        
         [OMEGA, SOL, PICARD] = sequential_continuation(O,range,varargin)
-        
-        [OMEGA, SOL, PICARD] = sequential_continuation_reformulated(O,range,varargin)
-        
-        A_zeta = Ax(O,x0)
-          
-        [y, yd, z0] = Picard_reformulated(O,varargin)
-        
-        [F_P,Tz] = F_P_reformulated(O,eta0,z)
-        
-        DF_P = DF_P_reformulated(O,UTz)
-
-        [y, yd, z0] = NewtonRaphson_reformulated(O,varargin)
-        
-        W = SSM(O,S)
-        
+               
         W = SSM2(O,S)
         
         [U2,omega2,zeta2] = SSMcomps(O)

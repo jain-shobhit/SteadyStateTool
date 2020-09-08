@@ -22,11 +22,26 @@ A = 0.02;                     % loading amplitude
 f0 = [1;0;0];                 % loading shape
 f = @(t,T)A*f0*sin(2*pi*t/T); % loading function
 
+%% Mode selection
+
+SS = SSR(M,C,K,1);
+
+% SSM computation
+R = cell(1,2);
+R{1} = [ome2^2/2];
+R{2} = [ome3^2/2];
+W = SS.SSM2(R);
+disp(['norm(W_2)=' num2str(norm(W{1})) ', norm(W_3)=' num2str(norm(W{2}))])
+[~, ind] = max([norm(W{1}) norm(W{2})]);
+
+% master mode sets considered
+modesel1 = [1 2]; 
+modesel2 = [1 ind+1];
+
 %% SSR Package
 SSfull = SSR(M,C,K,[1 2 3]);   % full system
-SSred1 = SSR(M,C,K,[1 2]);     % reduced to I_1
-SSred2 = SSR(M,C,K,[1 3]);     % reduced to I_2
-
+SSred1 = SSR(M,C,K,modesel1);     % reduced to I_1
+SSred2 = SSR(M,C,K,modesel2);     % reduced to I_2
 SSfull.S = S;
 SSfull.DS = DS; 
 SSfull.f = f;

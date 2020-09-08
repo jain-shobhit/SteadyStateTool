@@ -9,9 +9,6 @@ midp_height = 0.005; %0.005 height of midpoint relative to the ends (measure of 
 nElements = 10;
 BC = 'B'; % simply supported
 [Misc,model] = Beam_Model(Geo,nElements,BC);
-
-modesel1 = [1:10];
-modesel2 = [1:8 12 17];
 n = length(model.freeDOFs);
 
 %% Mass Matrix
@@ -30,8 +27,24 @@ DS =@(x) NonlinearityJacobianVK(model,x);
 A = 80; % amplitude for which the FRC is computed
 f = @(t,T) A*model.loads(model.freeDOFs) * sin(2*pi*t/T); % loading function
 
-%% SSR package
+%% Steady-State tool
 SSfull = SSR(M,C,K,1:n);        % full system
+
+%% Mode selection
+
+% Input parameters for mode selection
+param.curvtolerance = 0.05;
+param.nmodes = 10;
+param.type = 1; % set to 0 if param.nmodes is the max number of modes,
+% set to 1 if param.nmodes is the desired number of modes
+param.example = 'simple'; % always use simple if enough memory is available to store X below
+X = S11(model); % this conains the quadratic nonlinearities for all dofs (X_i).
+% X_i is symmetric, and can be found from the form M\ddot{q} + C\dot{q} +
+% Kq +\Gamma(q) = F(t) (i denotes the specific row of this equation)
+
+% master mode sets considered
+modesel1 = 1:10; 
+modesel2 = modeselect(SSfull,param,X);
 SSred1 = SSR(M,C,K,modesel1);   % reduced to I_1
 SSred2 = SSR(M,C,K,modesel2);   % reduced to I_2
 
