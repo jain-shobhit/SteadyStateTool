@@ -14,5 +14,6 @@ else
     D = blkdiag(DSC{:});
     BU = blkdiag(BU{:});
 end 
-DF_P = speye( O.nt * O.n ) + BU * get_ConvMtx(O) * D;
+DD = BU * get_ConvMtx(O) * D;
+DF_P = speye( size(DD) ) + DD;
 end
