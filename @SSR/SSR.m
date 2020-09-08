@@ -79,12 +79,13 @@ classdef SSR < handle
             if nargin == 3
                 n = length(M);
                 O.mode_choice = 1:n;
+                [VV, dd] = eig(full(K),full(M));
             else
                 O.mode_choice = varargin{1};
+                [VV, dd] = eigs(K,M,max(O.mode_choice),'SM');
             end            
-            O.n = length(O.mode_choice);
+            O.n = length(O.mode_choice);           
             
-            [VV, dd] = eigs(full(K),full(M),max(O.mode_choice),'SM');
             dd = diag(dd);
             [~, ind] = sort(dd);
             VV = VV(:,ind);
