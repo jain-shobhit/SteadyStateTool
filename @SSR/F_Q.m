@@ -3,7 +3,7 @@ function F_Q = F_Q(O,x)
 % S - function handle to the nonlinearity
 switch O.sys_order
     case 'first'
-        F = O.F_kappa - SSR_O1.evaluate_fun_over_array(O.R,z,false) * O.E;
+        F = O.F_kappa - SSR.evaluate_fun_over_array(O.R,x,false) * O.E;
         F_Q = O.Hmat*F(:) ;
     case 'second'
         

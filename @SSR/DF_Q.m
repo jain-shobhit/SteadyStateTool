@@ -6,8 +6,8 @@ DSC = cell(O.nt,1);
 switch O.sys_order
     case 'first'
         N_k = O.N * size(O.kappa_set,2);
-        for j = 1:size(z,2)
-            DRC{j} = O.DR( z(:,j) ) ;
+        for j = 1:size(x,2)
+            DRC{j} = O.DR( x(:,j) ) ;
         end
         if verLessThan('matlab','9.7.0')
             D = spblkdiag(DRC{:});
