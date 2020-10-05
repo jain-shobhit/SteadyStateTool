@@ -148,7 +148,7 @@ classdef SSR < handle
                         [VV, dd] = eig(full(O.K),full(O.M));
                     else
                         O.mode_choice = varargin{1};
-                        [VV, dd] = eigs(K,M,max(O.mode_choice),'SM');
+                        [VV, dd] = eigs(O.K,O.M,max(O.mode_choice),'SM');
                     end
                     O.n = length(O.mode_choice);
                     
