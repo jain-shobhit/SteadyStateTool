@@ -13,7 +13,7 @@ classdef SSR < handle
     
     properties
         
-        sys_order = 'second' % order in which system is set up
+        sys_order       % order in which system is set up, can be 'first', 'second'
         
        
         %First order
@@ -85,7 +85,7 @@ classdef SSR < handle
         Qmat            % the global Q matrix containing the Green's function (amplification factors) for freq domain analysis
         f_theta         % function handle for forcing in torus coordinates
         f_kappa         % Fourier coefficients for the external forcing
-
+        lambda          % contains eigenvalues of the system
         
         m               % the discretization along each dimension of the Torus
         E               % The Fourier transform exponential matrix
@@ -111,42 +111,68 @@ classdef SSR < handle
     end
     
     methods
-        function O = SSR(M,C,K,varargin)
-            % Basic system properties
-            O.M = M;
-            O.C = C;
-            O.K = K;            
-            if nargin == 3
-                n = length(M);
-                O.mode_choice = 1:n;
-                [VV, dd] = eig(full(K),full(M));
-            else
-                O.mode_choice = varargin{1};
-                [VV, dd] = eigs(K,M,max(O.mode_choice),'SM');
-            end            
-            O.n = length(O.mode_choice);           
+        % Initiate an element of the SSR class by calling this function with
+        % a struct 'System' as input.
+        % System contains system matrices and string stating if system is
+        % set up in first or second order form
+        function O = SSR(System,varargin)
             
-            dd = diag(dd);
-            [~, ind] = sort(dd);
-            VV = VV(:,ind);
-            V = VV(:,O.mode_choice);
-            mu = diag(V.' * M * V);
-            O.U = V * diag( 1./ sqrt(mu) ); % mass normalized VMs
-            O.omega0 = sqrt(diag((O.U.' * K * O.U)));
-            O.K1 = O.U.' * K * O.U;
-            O.zeta = diag((O.U.' * C * O.U))./ (2*O.omega0);
-            O.C1 = O.U.' * C * O.U;
-            O.o = find(O.zeta>1);
-            O.c = find(O.zeta==1);
-            O.u = find(O.zeta<1);
-            lambda1 = (-O.zeta + sqrt(O.zeta.^2 - 1)).* O.omega0;
-            lambda2 = (-O.zeta - sqrt(O.zeta.^2 - 1)).* O.omega0;
-            O.alpha = real(lambda2);
-            O.omega = abs(imag(lambda2));
-            O.beta = lambda1;
-            O.gamma = lambda2;
-            O.SSMdone = 0;
-             
+            switch System.sys_order
+                case 'first'
+                    % Basic system properties
+                    O.sys_order = 'first';
+                    O.A = System.A;
+                    O.B = System.B;
+                    
+                    O.n = length(A)/2;
+                    O.N = length(A);
+                    [V, lambda] = eig(full(A),full(B));
+                    mu = diag(V.' * B * V);
+                    O.V = V * diag( 1./ sqrt(mu) ); % mass normalized VMs
+                    O.Vinv = O.V.';
+                    
+                    O.lambda = diag(lambda); % is now a vector
+                    omega  = abs(imag(O.lambda)); % natural frequencies
+                    O.omega = unique(omega);
+                    
+                case 'second'
+                    % Basic system properties
+                    O.sys_order = 'second';
+                    O.M = System.M;
+                    O.C = System.C;
+                    O.K = System.K;
+                    
+                    if nargin == 3
+                        n = length(M);
+                        O.mode_choice = 1:n;
+                        [VV, dd] = eig(full(K),full(M));
+                    else
+                        O.mode_choice = varargin{1};
+                        [VV, dd] = eigs(K,M,max(O.mode_choice),'SM');
+                    end
+                    O.n = length(O.mode_choice);
+                    
+                    dd = diag(dd);
+                    [~, ind] = sort(dd);
+                    VV = VV(:,ind);
+                    V = VV(:,O.mode_choice);
+                    mu = diag(V.' * M * V);
+                    O.U = V * diag( 1./ sqrt(mu) ); % mass normalized VMs
+                    O.omega0 = sqrt(diag((O.U.' * K * O.U)));
+                    O.K1 = O.U.' * K * O.U;
+                    O.zeta = diag((O.U.' * C * O.U))./ (2*O.omega0);
+                    O.C1 = O.U.' * C * O.U;
+                    O.o = find(O.zeta>1);
+                    O.c = find(O.zeta==1);
+                    O.u = find(O.zeta<1);
+                    lambda1 = (-O.zeta + sqrt(O.zeta.^2 - 1)).* O.omega0;
+                    lambda2 = (-O.zeta - sqrt(O.zeta.^2 - 1)).* O.omega0;
+                    O.alpha = real(lambda2);
+                    O.omega = abs(imag(lambda2));
+                    O.beta = lambda1;
+                    O.gamma = lambda2;
+                    O.SSMdone = 0;
+            end
         end  
         
         function U2 = get.U2(O)
