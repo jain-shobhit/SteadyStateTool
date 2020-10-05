@@ -151,7 +151,7 @@ classdef SSR < handle
             end
             if ~isequal(O.Omega, Omega)
                 O.Omega = Omega;
-                not_updated_Q(O);
+                not_updated(O);
             end
         end
         
