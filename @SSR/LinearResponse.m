@@ -8,15 +8,14 @@ switch O.sys_order
                 phi = O.Vinv * O.Ft;
                 % Compute modal response by convolution with Green's function
                 eta = convolution_x(O,phi);
-                z = O.V*eta;
+                z = O.V*eta;          
             case 'qp'
                 
                 z_kappa = reshape(O.Hmat * O.F_kappa(:),O.N,[]);
-                z = real(z_kappa*O.Einv);
-                
-                x  = z; %Outputs the vector z that contains positions and velocities
-                xd = [];
+                z = real(z_kappa*O.Einv);      
         end
+        x  = z; %Outputs the vector z that contains positions and velocities
+        xd = [];
     case 'second'
         switch O.type
             case 'p'

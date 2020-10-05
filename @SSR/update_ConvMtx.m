@@ -16,7 +16,6 @@ switch O.sys_order
             val((j-1)*O.nt^2 + 1 : j*O.nt^2) = MG(:);
         end
         CM = sparse(I,J,val,ntN,ntN);
-        size(CM)
         if O.order
             w = repmat(O.weights,O.N,1);
             O.ConvMtx = CM * spdiags(w(:),0,sparse(ntN,ntN) );

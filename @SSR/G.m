@@ -6,6 +6,6 @@ function G = G(O,t,T)
 exp_lambda_t = exp(O.lambda *t);
 exp_lambda_T = exp(O.lambda*T) ;
 fraction     = exp_lambda_T ./ ( 1- exp_lambda_T);
-G = exp_lambda_t .*( fraction + SSR_O1.h(t)) ;
+G = exp_lambda_t .*( fraction + SSR.h(t)) ;
 
 end
