@@ -124,10 +124,10 @@ classdef SSR < handle
                     O.A = System.A;
                     O.B = System.B;
                     
-                    O.n = length(A)/2;
-                    O.N = length(A);
-                    [V, lambda] = eig(full(A),full(B));
-                    mu = diag(V.' * B * V);
+                    O.n = length(O.A)/2;
+                    O.N = length(O.A);
+                    [V, lambda] = eig(full(O.A),full(O.B));
+                    mu = diag(V.' * O.B * V);
                     O.V = V * diag( 1./ sqrt(mu) ); % mass normalized VMs
                     O.Vinv = O.V.';
                     
@@ -142,10 +142,10 @@ classdef SSR < handle
                     O.C = System.C;
                     O.K = System.K;
                     
-                    if nargin == 3
-                        n = length(M);
+                    if nargin == 1
+                        n = length(O.M);
                         O.mode_choice = 1:n;
-                        [VV, dd] = eig(full(K),full(M));
+                        [VV, dd] = eig(full(O.K),full(O.M));
                     else
                         O.mode_choice = varargin{1};
                         [VV, dd] = eigs(K,M,max(O.mode_choice),'SM');
@@ -156,12 +156,12 @@ classdef SSR < handle
                     [~, ind] = sort(dd);
                     VV = VV(:,ind);
                     V = VV(:,O.mode_choice);
-                    mu = diag(V.' * M * V);
+                    mu = diag(V.' * O.M * V);
                     O.U = V * diag( 1./ sqrt(mu) ); % mass normalized VMs
-                    O.omega0 = sqrt(diag((O.U.' * K * O.U)));
-                    O.K1 = O.U.' * K * O.U;
-                    O.zeta = diag((O.U.' * C * O.U))./ (2*O.omega0);
-                    O.C1 = O.U.' * C * O.U;
+                    O.omega0 = sqrt(diag((O.U.' * O.K * O.U)));
+                    O.K1 = O.U.' * O.K * O.U;
+                    O.zeta = diag((O.U.' * O.C * O.U))./ (2*O.omega0);
+                    O.C1 = O.U.' * O.C * O.U;
                     O.o = find(O.zeta>1);
                     O.c = find(O.zeta==1);
                     O.u = find(O.zeta<1);
