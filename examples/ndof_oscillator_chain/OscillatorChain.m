@@ -31,7 +31,8 @@ f0 = ones(n,1); % loading shape
 f = @(t,T)alpha*f0*sin(2*pi*t/T); % loading function
 
 %% Linear response
-SS = SSR(M,C,K);    % Instantiating the SSR package
+System.M=M;System.C=C;System.K=K;System.sys_order='second';
+SS = SSR(System);    % Instantiating the SSR package
 omega1 = SS.omega(1);
 Omega_range = [0.7 1.3]*omega1;
 T_range = 2*pi./Omega_range;

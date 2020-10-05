@@ -6,8 +6,8 @@
 
 % The finite element model is taken from the following article. 
 % Jain, S., Tiso, P., & Haller, G. (2018). Exact nonlinear model reduction 
-% for a von Kármán beam: slow-fast decomposition and spectral submanifolds. 
-% Journal of Sound and Vibration, 423, 195–211. 
+% for a von Kï¿½rmï¿½n beam: slow-fast decomposition and spectral submanifolds. 
+% Journal of Sound and Vibration, 423, 195ï¿½211. 
 % https://doi.org/10.1016/J.JSV.2018.01.049
 
 clear 
@@ -36,7 +36,9 @@ K = model.K(model.freeDOFs,model.freeDOFs);
 C = model.C(model.freeDOFs,model.freeDOFs);
 
 %% Steady-State tool
-SS = SSR(M,C,K,1:n);   % full system
+System.M=M;System.C=C;System.K=K;System.sys_order='second';
+SS = SSR(System,1:n);    % Instantiating the SSR package
+
 
 %% Mode selection
 
@@ -54,8 +56,8 @@ X = S11(model); % this conains the quadratic nonlinearities for all dofs (X_i).
 % master mode sets considered
 I_1 = 1:10; 
 I_2 = modeselect(SS,param,X);
-SS1 = SSR(M,C,K,I_1);  % reduced to I_1   
-SS2 = SSR(M,C,K,I_2);  % reduced to I_2
+SS1 = SSR(System,I_1);  % reduced to I_1   
+SS2 = SSR(System,I_2);  % reduced to I_2
 
 %% Incrementing amplitude
 T = 2*pi/26;

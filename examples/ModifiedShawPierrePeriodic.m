@@ -35,7 +35,9 @@ f = @(t,T)alpha*f0*sin(2*pi*t/T); % loading function handle (also takes
 %% Linear response
 Omega = 0.25;       % forcing frequency (rad/sec)
 T = 2*pi/Omega;     % forcing time period
-SS = SSR(M,C,K);    % Instantiating the SSR package
+
+System.M=M;System.C=C;System.K=K;System.sys_order='second';
+SS = SSR(System);    % Instantiating the SSR package
 SS.f = f;           % setting the forcing
 SS.T = T;           % setting the time period at which periodic loading is applied
 SS.n_steps = 100;    % setting the number of time intervals within the time period

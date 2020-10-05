@@ -26,7 +26,8 @@ M = [m 0;
     0 m];
 n = length(K);
 
-SS = SSR(M,C,K);    % Instantiating the SSR package
+System.M=M;System.C=C;System.K=K;System.sys_order='second';
+SS = SSR(System);    % Instantiating the SSR package
 SS.type = 'qp';     % Solve for quasiperiodic response (i.e. Fourier domain)
 
 %% External forcing
@@ -84,12 +85,14 @@ SS.DS = DS;         % Setting the derivative
 t_newton = SS.t;
 
 %% sequential continuation to obtain response surface
+n_cont_steps = 8;
+param = 8;
 Omega1_range=[0.9 1.05];
-Omega2=linspace(sqrt(3)-0.1,sqrt(3)+0.1,101);
-Resp = nan(101,101);
+Omega2=linspace(sqrt(3)-0.1,sqrt(3)+0.1,param);
+Resp = nan(param,2*n_cont_steps+1);
 for j = 1:length(Omega2)
     Omega0 = [Omega1_range(1), Omega2(j)];
-    [Omega1_array,cont_sol,picard_flag] = SS.sequential_continuation(Omega1_range,'idx',1,'ncontsteps',50,'Omega0',Omega0);    
+    [Omega1_array,cont_sol,picard_flag] = SS.sequential_continuation(Omega1_range,'idx',1,'ncontsteps',n_cont_steps,'Omega0',Omega0);    
     % compute norm of the solution
     N = nan(length(Omega1_array),1);
     for k = 1:length(Omega1_array)

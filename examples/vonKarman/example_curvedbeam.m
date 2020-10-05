@@ -6,8 +6,8 @@
 
 % The finite element model is taken from the following article. 
 % Jain, S., Tiso, P., & Haller, G. (2018). Exact nonlinear model reduction 
-% for a von Kármán beam: slow-fast decomposition and spectral submanifolds. 
-% Journal of Sound and Vibration, 423, 195–211. 
+% for a von Kï¿½rmï¿½n beam: slow-fast decomposition and spectral submanifolds. 
+% Journal of Sound and Vibration, 423, 195ï¿½211. 
 % https://doi.org/10.1016/J.JSV.2018.01.049
 
 clear 
@@ -37,14 +37,16 @@ K = model.K(model.freeDOFs,model.freeDOFs);
 C = model.C(model.freeDOFs,model.freeDOFs);
 
 %% Nonlinearity
-S =@(x) NonlinearityVK(model,x);
-DS =@(x) NonlinearityJacobianVK(model,x);
+S  = @(x) NonlinearityVK(model,x);
+DS = @(x) NonlinearityJacobianVK(model,x);
 
 A = 80; % amplitude for which the FRC is computed
 f = @(t,T) A*model.loads(model.freeDOFs) * sin(2*pi*t/T); % loading function
 
 %% Steady-State tool
-SSfull = SSR(M,C,K,1:n);        % full system
+System.M=M;System.C=C;System.K=K;System.sys_order='second';
+SSfull = SSR(System,1:n);    % Instantiating the SSR package
+
 
 %% Mode selection
 
@@ -61,8 +63,8 @@ X = S11(model); % this conains the quadratic nonlinearities for all dofs (X_i).
 % master mode sets considered
 modesel1 = 1:10; 
 modesel2 = modeselect(SSfull,param,X);
-SSred1 = SSR(M,C,K,modesel1);   % reduced to I_1
-SSred2 = SSR(M,C,K,modesel2);   % reduced to I_2
+SSred1 = SSR(System,modesel1);   % reduced to I_1
+SSred2 = SSR(System,modesel2);   % reduced to I_2
 
 SSfull.S = S;
 SSfull.DS = DS;
