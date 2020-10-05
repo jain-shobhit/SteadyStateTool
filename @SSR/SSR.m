@@ -12,25 +12,45 @@ classdef SSR < handle
     % Mode Selection in Model Reduction, (2020) Preprint available on arXiv.org
     
     properties
+        
+        sys_order = 'second' % order in which system is set up
+        
+       
+        %First order
+        A               % linear System matrix Bdot(z) = Az +F(t)
+        B               % System matrix 
+        V               % Matrix of eigenvectors
+        Vinv
+        R               % function handle for the nonlinearity, takes the 2n dim vector z as input
+        DR              % function handle for the Jacobian of the nonlinearity
+        F               % function handle for the forcing F(t,T)
+        DF              % function handle for derivative of the forcing w.r.t time period T
+        
+        %Second order
         M               % Mass matrix
         K               % Stiffness matrix
         C               % Damping matrix (assuming proportional damping)
-        T               % Time Period of Oscillation
-        Omega           % Frequency basis vector (for quasi-periodic oscillation)
         U               % Matrix of (undamped) eigenvectors
         S               % function handle for the nonlinearity
         DS              % function handle for the Jacobian of the nonlinearity
         f               % function handle for the forcing f(t,T)
         Df              % function handle for derivative of the forcing w.r.t time period T
+
+        % Common parameters
+        T               % Time Period of Oscillation
+        Omega           % Frequency basis vector (for quasi-periodic oscillation)
         order = 1       % order if integration: Newton Cotes is used (existing steps are refined)
         n_steps = 50    % number of intervals in the time domain: 50 by default
         type = 'p'      % 'p': calculations performed for periodic solution (time domain)
                         % 'qp' : calculations performed for periodic solution (time domain)
         %     end
-        %
+        
+        
         %     properties (Access = private)
         alpha           % constants defined in (27)
-        omega           % constants defined in (27)
+        omega           % constants defined in (27) 
+                        % - eigenfrequencies of linear system in case of
+                        %   first order implementation
         beta            % constants defined in (27)
         gamma           % constants defined in (27)
         omega0          % undamped natural frequencies
@@ -40,12 +60,8 @@ classdef SSR < handle
         n               % number of DOFs
         t               % time vector 0:dt:T
         dt              % node spacing in the time mesh (T/nt)
-        Lvec            % Green's function for displacements (calculated over -T:dt:T)
-        DLvec           % Derivative dLdT
-        Jvec            % Green's function for velocities (calculated over -T:dt:T)
         ConvMtx         % convolution matrix for displacements
-        A               % reformulated convolution matrix
-        Lint            % precomputed integrals of Green's functions
+        ConvMtx_A       % reformulated convolution matrix
         isupdated       % check if different quantitities are updated according to T
         weights         % Weights vector for higher order integration
         nt              % number of nodes in the time mesh
@@ -53,9 +69,24 @@ classdef SSR < handle
         nh              % number of harmonics in of the base frequency Omega
         kappa_set       % the set of frequency-indices used during Fourier transformation
         theta_set       % the set of torus coordinates over which the solution is approximated used during Fourier transformation
+        
+        % First order implementation
+        Gvec            % Green's function first order (calculated over -T:dt:T)
+        Hmat            % the global H matrix containing the Green's function (amplification factors) for freq domain analysis
+        F_theta         % function handle for forcing in torus coordinates
+        F_kappa         % Fourier coefficients for the external forcing
+        N                % Phase space size        
+        
+        % Second order implementation
+        Lvec            % Green's function for displacements (calculated over -T:dt:T)
+        DLvec           % Derivative dLdT
+        Lint            % precomputed integrals of Green's functions
+        Jvec            % Green's function for velocities (calculated over -T:dt:T)
         Qmat            % the global Q matrix containing the Green's function (amplification factors) for freq domain analysis
         f_theta         % function handle for forcing in torus coordinates
         f_kappa         % Fourier coefficients for the external forcing
+
+        
         m               % the discretization along each dimension of the Torus
         E               % The Fourier transform exponential matrix
         Einv            % The inverse Fourier transform exponential matrix
@@ -115,6 +146,7 @@ classdef SSR < handle
             O.beta = lambda1;
             O.gamma = lambda2;
             O.SSMdone = 0;
+             
         end  
         
         function U2 = get.U2(O)
