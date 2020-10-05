@@ -267,6 +267,14 @@ classdef SSR < handle
             end
             Lvec = O.Lvec;
         end
+
+        function Gvec = get.Gvec(O)
+            % updates greens function 
+            if ~O.isupdated.G
+                update_Gvec(O);
+            end
+            Gvec = O.Gvec;
+        end        
         
         function Ft = get.Ft(O)
             if ~O.isupdated.Ft
@@ -293,9 +301,18 @@ classdef SSR < handle
             f_kappa = O.f_kappa;
         end
         
+        function F_kappa = get.F_kappa(O)
+            if ~O.isupdated.F_kappa
+                update_f_kappa(O);
+            end
+            F_kappa = O.F_kappa;
+        end
+        
         update_f_kappa(O)
         
         update_Lvec(O)
+        
+        update_Gvec(O)
                 
         L = L(O,t,T)
         
@@ -328,6 +345,15 @@ classdef SSR < handle
         end
         
         update_Qmat(O)
+        
+        function H = get.Hmat(O)
+            if ~O.isupdated.H
+                update_Hmat(O);
+            end
+            H = O.Hmat;
+        end
+        
+        update_Hmat(O)
         
         eta = convolution_x(O,phi)
         
