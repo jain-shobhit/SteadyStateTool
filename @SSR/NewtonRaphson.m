@@ -21,7 +21,8 @@ switch O.sys_order
                     %disp(['Iteration ' num2str(count) ': ' '||dx||/||x|| = ' num2str(r), ' residual = ' num2str(norm(F(:)))])
                     if count>maxiter || isnan(r)
                         warning('Newton iterations did not converge')
-                        z = [];
+                        x = [];
+                        xd = [];
                         return
                     end
                     z0 = z;
@@ -41,7 +42,8 @@ switch O.sys_order
                     %disp(['Iteration ' num2str(count) ': ' '||dx||/||x|| = ' num2str(r), ' residual = ' num2str(norm(F(:)))])
                     if count>maxiter || isnan(r)
                         warning('Newton iterations did not converge')
-                        z = [];
+                        x = [];
+                        xd = [];
                         return
                     end
                     z_kappa0 = z_kappa;
