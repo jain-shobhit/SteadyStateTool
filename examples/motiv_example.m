@@ -30,8 +30,9 @@ f0 = [1;0;0];                 % loading shape
 f = @(t,T)A*f0*sin(2*pi*t/T); % loading function
 
 %% Mode selection
+System.M=M;System.C=C;System.K=K;System.sys_order='second';
+SS = SSR(System,1);    % Instantiating the SSR package
 
-SS = SSR(M,C,K,1);
 
 % SSM computation
 R = cell(1,2);
@@ -46,9 +47,9 @@ I_1 = [1 2];        % mode selection 1
 I_2 = [1 ind+1];    % mode selection 2
 
 %% SSR Package
-SSfull = SSR(M,C,K,[1 2 3]);   % full system
-SSred1 = SSR(M,C,K,I_1);     % reduced to I_1
-SSred2 = SSR(M,C,K,I_2);     % reduced to I_2
+SSfull = SSR(System,[1 2 3]);   % full system
+SSred1 = SSR(System,I_1);     % reduced to I_1
+SSred2 = SSR(System,I_2);     % reduced to I_2
 SSfull.S = S;
 SSfull.DS = DS; 
 SSfull.f = f;

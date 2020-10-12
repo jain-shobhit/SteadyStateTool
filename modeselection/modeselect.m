@@ -54,7 +54,8 @@ disp(modes)
 % nonlinear selection
 itnumber = 0;
 while length(modes) < param.nmodes
-    red = SSR(full.M,full.C,full.K,modes);
+    System.M=full.M; System.C=full.C; System.K = full.K; System.sys_order = 'second';
+    red = SSR(System,modes);
     red = copyfromfull(red,full);       % copies general props
     switch param.example                % obtaining the nonlinear coefficients is problem dependent
         case 'simple'                   % heavy on memory

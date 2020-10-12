@@ -2,13 +2,6 @@
 % m*x1dd + k(x1-x2) + c(x1d-x2d) + g*x1^3 = f1(t)
 % m*x2dd + k(2*x2-x1) + c(2*x2d - x1d) = f2(t)
 
-% This example is described in Section 4.1 (Figures 1,2) of the following 
-% article 
-% S. Jain, T. Breunung, G. Haller, Fast Computation of Steady-State 
-% Response for Nonlinear Vibrations of High-Degree-of-Freedom Systems, 
-% Nonlinear Dyn (2019) 97: 313. https://doi.org/10.1007/s11071-019-04971-1
-
-
 clear all
 clc; close all
 
@@ -26,41 +19,51 @@ M = [m 0;
     0 m];
 n = length(K);
 
+A = [ M , zeros(n) ; zeros(n), -K];
+B = [ zeros(n) , M ; M       , C ];
+
 %% External forcing
+n_steps = 100;
+order = 1;
 alpha = 2e-2;   % Loading amplitude
 f0 = [1;1];     % loading shape
 f = @(t,T)alpha*f0*sin(2*pi*t/T); % loading function handle (also takes
 % loading time period T as argument)
+F = @(t,T) [ zeros(n,n_steps*order+1);f(t,T)];
 
 %% Linear response
 Omega = 0.25;       % forcing frequency (rad/sec)
 T = 2*pi/Omega;     % forcing time period
 
-System.M=M;System.C=C;System.K=K;System.sys_order='second';
+System.A = A;System.B=B;System.sys_order = 'first';
+
 SS = SSR(System);    % Instantiating the SSR package
-SS.f = f;           % setting the forcing
+SS.F = F;           % setting the forcing
 SS.T = T;           % setting the time period at which periodic loading is applied
-SS.n_steps = 100;    % setting the number of time intervals within the time period
-SS.order = 1;       % setting the order of integration, permissible values
+SS.n_steps = n_steps;    % setting the number of time intervals within the time period
+SS.order = order;       % setting the order of integration, permissible values
 % are 0,1,2,3,4
 
-[x_lin, xd_lin] = SS.LinearResponse();
+[z_lin,~] = SS.LinearResponse();
 t_lin = SS.t;
 
 %% Nonlinearity function handle
-S = @(x)[g * x(1)^3; 0];
-DS = @(x)[3 * g * x(1)^2, 0 ; 0, 0];
+S = @(x)[g * x(n+1)^3; 0];
+DS = @(x)[3 * g * x(n+1)^2, 0 ; 0, 0];
+
+R  = @(x) [zeros(n,1); S(x)];
+DR = @(x) [zeros(n,2*n); zeros(n), DS(x)];
 
 %% Nonlinear response
-SS.S = S;           % Setting the nonlinearity
+SS.R = R;           % Setting the nonlinearity
 % Nonlinear response with Picard iteration
-[x_picard,xd_picard] = SS.Picard('init',x_lin,'tol',1e-3,'maxiter',20); % 'init', 'maxiter', 'tol' are optional arguments
+z_picard = SS.Picard('init',z_lin,'tol',1e-3,'maxiter',20); % 'init', 'maxiter', 'tol' are optional arguments
 t_picard = SS.t;
 % hold on; plot(SS.t, x_picard, 'DisplayName', 'Picard');
 
 % Nonlinear response with Newton--Raphson iteration
-SS.DS = DS;         % Setting the derivative
-[x_newton,xd_newton] = SS.NewtonRaphson(); % find out response using Picard iteration
+SS.DR = DR;         % Setting the derivative
+z_newton = SS.NewtonRaphson(); % find out response using Picard iteration
 t_newton = SS.t;
 % hold on; plot(SS.t, x_newton, 'DisplayName', 'Newton');
 
@@ -69,32 +72,34 @@ A = [zeros(n,n) eye(n,n);
     -M\K    -M\C];
 
 Gamma = @(t,T)[zeros(n,1); M\f(t,T)]; % loading function
-G = @(z)[ zeros(n,1); -M\S(z(1:n)) ];
+G = @(z)[ zeros(n,1); -M\S(z) ];
 F = @(t,z,T) A*z + G(z) + Gamma(t,T);
 F_lin = @(t,z,T) A*z + Gamma(t,T);
 
+% {
 figure
 % linear solution
-[~, z_lin] = ode45(@(t,z)F_lin(t,z,T), [0 100*T], [0; 0;0;0]); % Transients
-[t, z_lin] = ode45(@(t,z)F_lin(t,z,T), [0 3*T], z_lin(end,:)'); % Approximate periodic orbit
+[~, z_lin_o] = ode45(@(t,z)F_lin(t,z,T), [0 100*T], [0; 0;0;0]); % Transients
+[t, z_lin_o] = ode45(@(t,z)F_lin(t,z,T), [0 3*T], z_lin_o(end,:)'); % Approximate periodic orbit
+
 for j = 1:n
     subplot(n,1,j)
-    plot(t, z_lin(:,j), 'DisplayName', 'Linear - ode45');
-    hold on; plot(t_lin, x_lin(j,:), 'DisplayName', 'Linear - IE');
+    plot(t, z_lin_o(:,j), 'DisplayName', 'Linear - ode45');
+    hold on; plot(t_lin, real(z_lin(n+j,:)), 'DisplayName', 'Linear - IE');
     xlabel('$$t$$'); ylabel(['$$x_' num2str(j) '$$'])
     axis tight; grid on;legend('show')
 end
 
-[~, z] = ode45(@(t,z)F(t,z,T), [0 100*T], zeros(2*n,1)); % Transients
-[t, z] = ode45(@(t,z)F(t,z,T), [0 3*T], z(end,:)'); % Approximate periodic orbit
+[~, z_o] = ode45(@(t,z)F(t,z,T), [0 100*T], zeros(2*n,1)); % Transients
+[t, z_o] = ode45(@(t,z)F(t,z,T), [0 3*T], z_o(end,:)'); % Approximate periodic orbit
 
 % plots
 figure;
 for j = 1:n
     subplot(n,1,j)
-    plot(t, z(:,j), 'DisplayName', 'ode45')
-    hold on; plot(t_picard, x_picard(j,:), 'DisplayName', 'Picard');
-    plot(T+t_newton, x_newton(j,:), 'DisplayName', 'Newton');
+    plot(t, z_o(:,j), 'DisplayName', 'ode45')
+    hold on; plot(t_picard, real(z_picard(n+j,:)), 'DisplayName', 'Picard');
+    plot(T+t_newton, real(z_newton(n+j,:)), 'DisplayName', 'Newton');
     xlabel('$$t$$'); ylabel(['$$x_' num2str(j) '$$'])
     axis tight; grid on; legend('show')
     
@@ -110,16 +115,19 @@ for j = 1:length(Omega_array)
         N(j) = SS.dt*norm(cont_sol{j},'fro');
     end
 end
-figure; semilogy(Omega_array,N,'-b');axis tight; grid on;
-xlabel('$$\Omega$$ [rad/s]'); ylabel('$$||\mathbf{x}||_2$$')
+figure;semilogy(Omega_array,N,'or','DisplayName', 'First order');axis tight; grid on;
+xlabel('$$\Omega$$ [rad/s]'); ylabel('$$||\mathbf{x}||_2$$');legend('show');
 
 %% Ampltude variation
+T_range = [6 21];
+
 alpha_array = [0.01 0.02 0.04 0.08]; % Amplitude array
 figure;
 for k = 1:length(alpha_array)
     f = @(t,T)alpha_array(k)*f0*sin(2*pi*t/T); % loading function handle
-    SS.f = f;
-    [Omega_array,cont_sol,picard_flag] = SS.sequential_continuation(T_range,'ncontsteps',100);
+    F = @(t,T) [ zeros(n,n_steps*order+1);f(t,T)];
+    SS.F=F;
+    [Omega_array,cont_sol,picard_flag] = SS.sequential_continuation(T_range,'ncontsteps',n_steps);
     N = nan(length(Omega_array),1);
     for j = 1:length(Omega_array)
         if ~isempty(cont_sol{j})

@@ -1,16 +1,11 @@
 %% Oscillator chain with coupled nonlinearities
-% This example is described in Section 4.2 (Figure 6) of the following 
-% article 
-% S. Jain, T. Breunung, G. Haller, Fast Computation of Steady-State 
-% Response for Nonlinear Vibrations of High-Degree-of-Freedom Systems, 
-% Nonlinear Dyn (2019) 97: 313. https://doi.org/10.1007/s11071-019-04971-1
-
 clear all
 clc
 
 
 %%
 n = 20;
+n_steps = 50;
 m = 1;
 k = 1;
 c = 1;
@@ -22,43 +17,50 @@ C = c * temp;
 K = k * temp;
 M = m*speye(n,n);
 
+A = [ M , zeros(n) ; zeros(n), -K];
+B = [ zeros(n) , M ; M       , C ];
 
-S = @(x)g*SP_nonlinearity(x);
-DS = @(x)g*SP_nonlinearity_derv(x);
+S = @(x)g*SP_nonlinearity_O1(x);
+DS = @(x)g*SP_nonlinearity_derv_O1(x);
+
+R  = @(x) [zeros(n,1); S(x)];
+DR = @(x) [zeros(n,2*n); zeros(n), DS(x)];
 
 alpha = 5e-5;
 f0 = ones(n,1); % loading shape
 f = @(t,T)alpha*f0*sin(2*pi*t/T); % loading function
 
+F = @(t,T) [zeros(n,n_steps+1); f(t,T)];
 %% Linear response
-System.M=M;System.C=C;System.K=K;System.sys_order='second';
+System.A = A;
+System.B = B;
+System.sys_order = 'first';
 SS = SSR(System);    % Instantiating the SSR package
-omega1 = SS.omega(1);
+
+omega1 = imag(SS.lambda(1));
 Omega_range = [0.7 1.3]*omega1;
 T_range = 2*pi./Omega_range;
 T = mean(T_range);
-SS.f = f;           % setting the forcing
+SS.F = F;           % setting the forcing
 SS.T = T;           % setting the time period at which periodic loading is applied
-SS.n_steps = 50;    % setting the number of time intervals within the time period
+SS.n_steps = n_steps;    % setting the number of time intervals within the time period
 SS.order = 1;       % setting the order of integration, permissible values
                     % are 0,1,2,3,4
 
-[x_lin, xd_lin] = SS.LinearResponse();
+[z_lin] = SS.LinearResponse();
 t_lin = SS.t;
-
 %% Nonlinear response
-SS.S = S;           % Setting the nonlinearity
+SS.R = R;           % Setting the nonlinearity
 % Nonlinear response with Picard iteration
-[x_picard,xd_picard] = SS.Picard('init',x_lin,'tol',1e-6,'maxiter',20); % 'init', 'maxiter', 'tol' are optional arguments
+[z_picard] = SS.Picard('init',z_lin,'tol',1e-6,'maxiter',20); % 'init', 'maxiter', 'tol' are optional arguments
 t_picard = SS.t;
-% hold on; plot(SS.t, x_picard, 'DisplayName', 'Picard');
+hold on; plot(SS.t, z_picard(n+1:end,:), 'DisplayName', 'Picard');
 
 % Nonlinear response with Newton--Raphson iteration
-SS.DS = DS;         % Setting the derivative
-[x_newton,xd_newton] = SS.NewtonRaphson(); % find out response using Picard iteration
+SS.DR = DR;         % Setting the derivative
+[z_newton] = SS.NewtonRaphson(); % find out response using Picard iteration
 t_newton = SS.t;
-% hold on; plot(SS.t, x_newton, 'DisplayName', 'Newton');
-
+%hold on; plot(SS.t, z_newton, 'DisplayName', 'Newton');
 
 %% sequential continuation
 tic
