@@ -5,7 +5,7 @@ switch O.sys_order
         switch O.type
             case 'p'
                 % Compute modal forcing
-                phi = O.Vinv * O.Ft;
+                phi = O.W' * O.Ft;
                 % Compute modal response by convolution with Green's function
                 eta = convolution_x(O,phi);
                 z = O.V*eta;          

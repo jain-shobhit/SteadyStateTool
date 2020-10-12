@@ -10,7 +10,7 @@ H_T_kappa = 1./( 1i* O.Omega*kappas ...
 H_kappa = cell(n_kappa,1);
 for j = 1:n_kappa
     H = H_T_kappa(:,j);
-    H_kappa{j} = O.V * diag(H) * O.Vinv;
+    H_kappa{j} = O.V * diag(H) * O.W';
 end
 
 if verLessThan('matlab','9.7.0')

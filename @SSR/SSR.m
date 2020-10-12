@@ -20,7 +20,7 @@ classdef SSR < handle
         A               % linear System matrix Bdot(z) = Az +F(t)
         B               % System matrix 
         V               % Matrix of eigenvectors
-        Vinv
+        W
         R               % function handle for the nonlinearity, takes the 2n dim vector z as input
         DR              % function handle for the Jacobian of the nonlinearity
         F               % function handle for the forcing F(t,T)
@@ -126,10 +126,10 @@ classdef SSR < handle
                     
                     O.n = length(O.A)/2;
                     O.N = length(O.A);
-                    [V, lambda] = eig(full(O.A),full(O.B));
-                    mu = diag(V.' * O.B * V);
+                    [V, lambda, W] = eig(full(O.A),full(O.B));
+                    mu = diag(W' * O.B * V);
                     O.V = V * diag( 1./ sqrt(mu) ); % mass normalized VMs
-                    O.Vinv = O.V.';
+                    O.W = (W*diag(1./(sqrt(mu)')));%O.V.';
                     
                     O.lambda = diag(lambda); % is now a vector
                     omega  = abs(imag(O.lambda)); % natural frequencies

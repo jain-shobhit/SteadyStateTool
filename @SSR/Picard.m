@@ -16,7 +16,7 @@ switch O.sys_order
                     % Evaluate the map G_P
                     
                     R_array = SSR.evaluate_fun_over_array(O.R,z0,false);
-                    eta = O.convolution_x( O.Vinv * (O.Ft - R_array) );
+                    eta = O.convolution_x( O.W' * (O.Ft - R_array) );
                     z = O.V * eta;
                     % convergence check
                     r = norm(z-z0,Inf)/norm(z0,Inf);
