@@ -85,7 +85,7 @@ figure
 for j = 1:n
     subplot(n,1,j)
     plot(t, z_lin_o(:,j), 'DisplayName', 'Linear - ode45');
-    hold on; plot(t_lin, z_lin(n+j,:), 'DisplayName', 'Linear - IE');
+    hold on; plot(t_lin, real(z_lin(n+j,:)), 'DisplayName', 'Linear - IE');
     xlabel('$$t$$'); ylabel(['$$x_' num2str(j) '$$'])
     axis tight; grid on;legend('show')
 end
@@ -98,8 +98,8 @@ figure;
 for j = 1:n
     subplot(n,1,j)
     plot(t, z_o(:,j), 'DisplayName', 'ode45')
-    hold on; plot(t_picard, z_picard(n+j,:), 'DisplayName', 'Picard');
-    plot(T+t_newton, z_newton(n+j,:), 'DisplayName', 'Newton');
+    hold on; plot(t_picard, real(z_picard(n+j,:)), 'DisplayName', 'Picard');
+    plot(T+t_newton, real(z_newton(n+j,:)), 'DisplayName', 'Newton');
     xlabel('$$t$$'); ylabel(['$$x_' num2str(j) '$$'])
     axis tight; grid on; legend('show')
     
@@ -115,7 +115,7 @@ for j = 1:length(Omega_array)
         N(j) = SS.dt*norm(cont_sol{j},'fro');
     end
 end
-openfig('MSPPbb2ndOrder.fig');hold on; semilogy(Omega_array,N,'or','DisplayName', 'First order');axis tight; grid on;
+figure;semilogy(Omega_array,N,'or','DisplayName', 'First order');axis tight; grid on;
 xlabel('$$\Omega$$ [rad/s]'); ylabel('$$||\mathbf{x}||_2$$');legend('show');
 
 %% Ampltude variation

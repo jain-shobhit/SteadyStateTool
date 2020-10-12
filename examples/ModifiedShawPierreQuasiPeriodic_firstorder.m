@@ -94,7 +94,7 @@ end
 t_newton = SS.t;
 
 %% sequential continuation to obtain response surface
-param = 1;
+param = 8;
 n_cont_steps = 8;
 
 Omega1_range=[0.9, 1.05];
