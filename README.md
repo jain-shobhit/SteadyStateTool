@@ -15,7 +15,7 @@ G. Buza, S. Jain, G. Haller, Using Spectral Submanifolds for Optimal Mode Select
 
 Software reference:
 
-Shobhit Jain, Thomas Thurnher, Gergely Buza, Thomas Breunung, & George Haller. (2020). SteadyStateTool (Version v1.1). Zenodo. http://doi.org/10.5281/zenodo.3992820
+Shobhit Jain, Thomas Thurnher, Gergely Buza, Thomas Breunung, & George Haller. (2020). SteadyStateTool (Version v1.2). Zenodo. http://doi.org/10.5281/zenodo.3992820
 
 
 # Installation
