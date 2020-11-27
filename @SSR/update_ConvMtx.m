@@ -38,6 +38,21 @@ switch O.sys_order
             val((j-1)*O.nt^2 + 1 : j*O.nt^2) = ML(:);
         end
         CM = sparse(I,J,val,N,N);
+        
+        % This is here so that BU*CM happens once per cont. step rather
+        % than once per iteration step
+        B = size(O.U);
+        if B(1) == B(2)
+            BU = cell(O.nt,1);
+            for j = 1:O.nt
+                BU{j} = sparse(O.U); 
+            end
+            BU = blkdiag(BU{:});
+            CM = BU * CM;
+        end
+        
+        CM = full(CM); % at this point CM is full
+
         if O.order
             w = repmat(O.weights,O.n,1);
             O.ConvMtx = CM * spdiags(w(:),0,sparse(N,N) );

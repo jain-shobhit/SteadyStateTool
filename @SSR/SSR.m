@@ -79,7 +79,6 @@ classdef SSR < handle
         % Second order implementation
         Lvec            % Green's function for displacements (calculated over -T:dt:T)
         DLvec           % Derivative dLdT
-        Lint            % precomputed integrals of Green's functions
         Jvec            % Green's function for velocities (calculated over -T:dt:T)
         Qmat            % the global Q matrix containing the Green's function (amplification factors) for freq domain analysis
         f_theta         % function handle for forcing in torus coordinates
@@ -107,6 +106,10 @@ classdef SSR < handle
         zeta2store
         omega2store
         SSMdone         % Boolean that ensures that the eigenvalues are only computed once
+    
+        % Reformulation
+        AA              % reformulated convolution matrix A
+        Lint            % precomputed integrals of Green's functions
     end
     
     methods
@@ -368,7 +371,7 @@ classdef SSR < handle
         
         DF_Q = DF_Q(O,x)
         
-        [x, xd] = LinearResponse(O)
+        [x, xd, eta] = LinearResponse(O)
         
         [x, xd] = Picard(O,varargin)
         
@@ -382,7 +385,31 @@ classdef SSR < handle
         
         [U2,omega2,zeta2] = SSMcomps(O)
         
-        [om, N] = FRC(O,T_range,ncontsteps)
+        [om, N] = FRC(O,T_range,ncontsteps,varargin)
+        
+        % Methods for reformulation
+        
+        AA = get_AA(O)
+        
+        Lint = get_Lint(O)
+        
+        update_AA(O)
+        
+        update_Lint(O)
+        
+        AA_zeta = AAx(O,x0)
+        
+        [x0,eta0,tol,maxiter] = parse_iteration_inputs_ref(O,inputs)
+        
+        [OMEGA, SOL, PICARD] = sequential_continuation_reformulated(O,range,varargin)
+        
+        [y, yd, z0] = Picard_reformulated(O,varargin)
+        
+        [F_P,Tz] = F_P_reformulated(O,eta0,z)
+        
+        DF_P = DF_P_reformulated(O,UTz)
+        
+        [y, yd, z0] = NewtonRaphson_reformulated(O,varargin)
     end
     
     methods(Static)

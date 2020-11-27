@@ -61,18 +61,49 @@ switch O.sys_order
         switch O.type
             case 'p'
                 while r>tol
+                B = size(O.U);
+
+                % if a reduced model is used, project the system
+                if B(1) ~= B(2)
+                    z0 = O.U.'* O.M * x0;
+                    F = F_P(O,z0);      % evaluation of the zero function
+                    DF = DF_P(O,z0);    % derivative of zero function                  
+                else
                     F = F_P(O,x0);      % evaluation of the zero function
                     DF = DF_P(O,x0);    % derivative of zero function
-                    mu = -DF\F(:);      % correction to the solution guess
-                    x = x0 + reshape(mu,size(x0));  % new solution guess
-                    r = norm(x-x0,Inf)/norm(x0,Inf);
-                    disp(['Iteration ' num2str(count) ': ' '||dx||/||x|| = ' num2str(r), ' residual = ' num2str(norm(F(:)))])
-                    if count>maxiter || isnan(r)
-                        warning('Newton iterations did not converge')
-                        x = [];
-                        xd = [];
-                        return
+                end
+
+                % check if the problem is already parallelized by DF_P
+                if isdistributed(DF)
+                    F2 = distributed(F(:));
+                    spmd
+                        mu = -DF\F2;      % correction to the solution guess
                     end
+                    mu = gather(mu);
+                else
+                    mu = -DF\F(:);        % correction to the solution guess
+                end
+
+                % project the correction back to the original coordinates
+                % for reduced systems
+                if B(1) ~= B(2)
+                    BU = cell(O.nt,1);
+                    for j = 1:O.nt
+                        BU{j} = sparse(O.U);
+                    end
+                    BU = blkdiag(BU{:});
+                    mu = BU * mu;
+                end
+
+                x = x0 + reshape(mu,size(x0));  % new solution guess
+                r = norm(x-x0,Inf)/norm(x0,Inf);
+                disp(['Iteration ' num2str(count) ': ' '||dx||/||x|| = ' num2str(r), ' residual = ' num2str(norm(F(:)))])
+                if count>maxiter || isnan(r)
+                    warning('Newton iterations did not converge')
+                    x = [];
+                    xd = [];
+                    return
+                end
                     x0 = x;
                     count = count + 1;
                 end

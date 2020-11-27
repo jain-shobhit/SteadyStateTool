@@ -65,7 +65,7 @@ while length(modes) < param.nmodes
             VC = zeros(param.fulldof,length(red.M)-red.n);
             V(param.freedofs,:) = red.U;
             VC(param.freedofs,:) = red.U2;
-            [K2,~] = AssembleTensors(param.model,V,VC); % computes quadratic coeffs R_i
+            K2 = AssembleTensors(param.model,V,VC); % computes quadratic coeffs R_i
             R = cell(1,size(red.U2,2));
             for i = 1:size(red.U2,2)
                 R{i} = K2(i,:,:);

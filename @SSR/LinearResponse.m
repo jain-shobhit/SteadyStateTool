@@ -1,4 +1,4 @@
-function [x,xd] = LinearResponse(O)
+function [x,xd,eta] = LinearResponse(O)
 
 switch O.sys_order
     case 'first'

@@ -26,6 +26,8 @@ switch O.sys_order
                 update.CML = false;
                 update.DL = false;
                 update.Ft = false;
+                update.AA = false;
+                update.Lint = false;
                 O.isupdated = update;
             case 'qp'
                 update.Q = false;
