@@ -74,7 +74,7 @@ SSred2 = copyfromfull(SSred2,SSfull);
 
 %% Sequential continuation
 omega1 = SSfull.omega(1);
-Omega_range = [0.7 1.3]*omega1;             
+Omega_range = [0.55 1.3]*omega1;             
 T_range = 2*pi./Omega_range;
 ncontsteps = 100;
 
@@ -87,11 +87,11 @@ for j = 1:length(Omega_arrayf)
     SSfull.T = 2*pi/Omega_arrayf(j);
     [x_lin, xd_lin] = SSfull.LinearResponse();
     LinSol = [x_lin; xd_lin];
-    Nlin(j) = SSfull.dt*norm(LinSol,'fro');
+    Nlin(j) = sqrt(SSfull.dt)*norm(LinSol(1:end/2,:),'fro')/SSfull.T;
 end
 
 figure(2); semilogy(Omega_arrayf,Nf,'-k','DisplayName', 'Full','linewidth',1); axis tight; grid on; hold on;
-xlabel('$$\Omega$$ [rad/s]'); ylabel('$$||q||_2$$')
+xlabel('$$\Omega$$ [rad/s]'); ylabel('$$\Vert q \Vert_{L^2}/T$$')
 legend('show')
 semilogy(Omega_arrayf,Nlin,'-b', 'DisplayName', 'Linear','linewidth',1);
 semilogy(Omega_array1,N1,'--g', 'DisplayName', 'Reduced $$I_1$$','linewidth',2);

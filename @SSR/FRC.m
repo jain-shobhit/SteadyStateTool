@@ -6,7 +6,8 @@ function [om, N] = FRC(O,T_range,ncontsteps)
 N = nan(length(om),1);
 for j = 1:length(om)
     if ~isempty(cont_sol{j})
-        N(j) = O.dt*norm(cont_sol{j},'fro');
+        O.T = 2*pi/om(j);
+        N(j) = sqrt(O.dt)*norm(cont_sol{j}(1:end/2,:),'fro')/O.T;
     end
 end    
 end

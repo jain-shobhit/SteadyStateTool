@@ -85,14 +85,14 @@ for j = 1:length(A)
     else
         [x2,xd2] = SS1.NewtonRaphson('init',x2,'tol',tol,'maxiter',maxiter);
     end
-    N1(j) = SS1.dt*norm([x2; xd2],'fro');
+    N1(j) = sqrt(SS1.dt)*norm([x2; xd2],'fro');
 
     if j == 1
         [x3,xd3] = SS2.NewtonRaphson('tol',tol,'maxiter',maxiter); % find out response using Picard iteration
     else
         [x3,xd3] = SS2.NewtonRaphson('init',x3,'tol',tol,'maxiter',maxiter);
     end
-    N2(j) = SS2.dt*norm([x3; xd3],'fro');
+    N2(j) = sqrt(SS2.dt)*norm([x3; xd3],'fro');
 
 
     if j == 1
@@ -101,10 +101,10 @@ for j = 1:length(A)
         [xf,xdf] = SS.NewtonRaphson('init',xf,'tol',tol,'maxiter',maxiter);
     end
 
-    NF(j) = SS.dt*norm([xf; xdf],'fro');
+    NF(j) = sqrt(SS.dt)*norm([xf; xdf],'fro');
 
     [x_lin, xd_lin] = SS.LinearResponse();
-    NL(j) = SS.dt*norm([x_lin; xd_lin],'fro');
+    NL(j) = sqrt(SS.dt)*norm([x_lin; xd_lin],'fro');
     
     disp(vpa(A(j)))
 end
@@ -126,13 +126,13 @@ plot(SS2.t, x3(plot_dof,:),'--r', 'DisplayName', 'Reduced $$I_2$$','linewidth',2
 %% forcing amp - response amp curve
 figure
 plot(A,NF,'-k','DisplayName', 'Full','linewidth',1); axis tight; hold on;
-xlabel('$$F$$ [N]'); ylabel('$$||q||_2$$')
+xlabel('$$F$$ [N]'); ylabel('$$\Vert q \Vert_{L^2}$$')
 lgd = legend('show');
 lgd.Location = 'southeast';
 plot(A,NL,'-b', 'DisplayName', 'Linear','linewidth',1);
 plot(A,N1,'--g', 'DisplayName', 'Reduced $$I_1$$','linewidth',2);
 plot(A,N2,'--r','DisplayName', 'Reduced $$I_2$$','linewidth',2);
-ylim([0 0.032])
+ylim([0 0.65])
 
 
 
